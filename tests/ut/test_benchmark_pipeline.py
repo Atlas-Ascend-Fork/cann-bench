@@ -1943,6 +1943,40 @@ def test_config_runner_generates_random_output_when_omitted(monkeypatch):
     assert spec.tasks[0].root_dir == spec.output / "exp"
 
 
+def test_configured_tasks_use_unique_ids_for_same_basename(tmp_path):
+    selectors = ["tasks/level1/exp", "bench_lab/pypto_cann_bench/level1/exp"]
+    tasks = config_runner._configured_tasks(selectors, tmp_path / "output")
+
+    assert [task.name for task in tasks] == ["exp", "exp_4862db2e"]
+    assert len({task.name for task in tasks}) == 2
+    assert len({task.root_dir for task in tasks}) == 2
+
+    for task in tasks:
+        config_runner.pipeline_state.update_task(
+            "run-same-basename",
+            task.name,
+            {"selector": task.selector},
+            cann_bench_root=tmp_path,
+        )
+
+    listed = config_runner.pipeline_state.list_tasks("run-same-basename", cann_bench_root=tmp_path)
+    assert [item["selector"] for item in listed] == selectors
+    state_files = [
+        config_runner.pipeline_state.task_file("run-same-basename", task.name, tmp_path)
+        for task in tasks
+    ]
+    assert state_files[0] != state_files[1]
+    assert all(path.is_file() for path in state_files)
+
+
+def test_configured_tasks_reject_duplicate_selector(tmp_path):
+    with pytest.raises(ValueError, match="duplicate selector: tasks/level1/exp"):
+        config_runner._configured_tasks(
+            ["tasks/level1/exp", "tasks/level1/exp", "tasks/level1/exp"],
+            tmp_path / "output",
+        )
+
+
 def test_eval_args_pass_through_kernel_eval_options():
     args = build_eval_args(
         {

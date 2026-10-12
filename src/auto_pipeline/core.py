@@ -2256,11 +2256,15 @@ def _task_selectors(benchmark_cfg: Mapping[str, Any]) -> list[str]:
 
 def _configured_tasks(selectors: list[str], output: Path) -> list[ConfiguredTask]:
     used: set[str] = set()
+    seen_selectors: set[str] = set()
     tasks = []
     for selector in selectors:
+        if selector in seen_selectors:
+            raise ValueError(f"benchmark.tasks contains duplicate selector: {selector}")
+        seen_selectors.add(selector)
         base = _selector_leaf_name(selector)
         slug = _unique_slug(base, selector, used)
-        tasks.append(ConfiguredTask(name=base, selector=selector, root_dir=output / slug))
+        tasks.append(ConfiguredTask(name=slug, selector=selector, root_dir=output / slug))
     return tasks
 
 
@@ -2275,7 +2279,12 @@ def _selector_leaf_name(selector: str) -> str:
 def _unique_slug(base: str, selector: str, used: set[str]) -> str:
     slug = base
     if slug in used:
-        slug = f"{base}_{uuid.uuid5(uuid.NAMESPACE_URL, selector).hex[:8]}"
+        suffix = uuid.uuid5(uuid.NAMESPACE_URL, selector).hex[:8]
+        slug = f"{base}_{suffix}"
+        counter = 2
+        while slug in used:
+            slug = f"{base}_{suffix}_{counter}"
+            counter += 1
     used.add(slug)
     return slug
 
