@@ -1395,20 +1395,25 @@ from kernel_eval.base.perf_strategy import KernelDetailsStrategy, MsProfSummaryS
 # 评测组件
 from kernel_eval.eval import Evaluator, OpRunner, AccuracyEvaluator, PerfEvaluator
 from kernel_eval.eval import EvalCaseResult, EvalOperatorResult, EvalSessionResult
-from kernel_eval.eval import ProcessPoolCoordinator, FailureSynthesizer
+from kernel_eval.eval.process_pool import ProcessPoolCoordinator
+from kernel_eval.eval import FailureSynthesizer
 
 # 安全
-from kernel_eval.security import APIGuard, TorchOpGuard
+from kernel_eval.security import APIGuard
+from kernel_eval.security.torch_op_guard import TorchOpGuard
 
 # 数据工具
 from kernel_eval.data import DataGenerator, PackageManager
 
 # 工具
-from kernel_eval.utils import DeviceManager, BaselineStore, compare_tensors
+from kernel_eval.utils import DeviceManager, compare_tensors
+from kernel_eval.utils.baseline_store import BaselineStore
 from kernel_eval.utils import tensors_to_fp64_cpu, camel_to_snake
 
 # 报告
-from kernel_eval.report import ReportGenerator, render_html_report, collect_setup_info
+from kernel_eval.report import ReportGenerator
+from kernel_eval.report.html_generator import render_html_report
+from kernel_eval.report.setup_info import collect_setup_info
 
 # 配置
 from kernel_eval.config import Config, get_config, set_config
