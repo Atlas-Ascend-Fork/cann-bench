@@ -116,19 +116,49 @@ __global__ __aicore__ __vector__ void sqrt_kernel(GM_ADDR x, GM_ADDR z, int64_t 
 }
 
 // Returns (numBlocks, blockLength, tileSize) where tileSize is element count
-// per UB tile. 2048 comfortably fits the two in/out queues plus the two fp32
-// cast buffers comfortably fit on 910b/950 UB.
+// per UB tile, derived at runtime from the UB capacity.
+//
+// Unlike add, the per-element UB cost here depends on T (queue depth
+// included): fp32 needs only the in/out queues, while fp16/bf16 also need the
+// two fp32 cast buffers. The tiling function cannot see T, so budget for the
+// worst case -- fp16/bf16 -- which is also safe (just a smaller tile) for fp32.
 std::tuple<int64_t, int64_t, int64_t> calc_sqrt_tiling_params(int64_t totalLength)
 {
     constexpr static int64_t MIN_ELEMS_PER_CORE = 1024;
-    constexpr static uint32_t FIXED_TILE_ELEMS = 2048;
+    // Full per-element UB cost, queue depth already folded in (see Init()):
+    //   fp32      -- in/out queues: 2 * PIPELINE_DEPTH * 4 B            = 16 B
+    //   fp16/bf16 -- in/out queues: 2 * PIPELINE_DEPTH * 2 B    =  8 B,
+    //                plus the two fp32 cast buffers 2 * 4 B           =  8 B
+    // Both paths land on 16 B per element, so a single depth-inclusive tile
+    // budget covers every dtype. Do NOT divide by PIPELINE_DEPTH again below;
+    // it is already part of these terms.
+    constexpr static int64_t BYTES_PER_ELEM_FP32 = 2 * PIPELINE_DEPTH * sizeof(float);
+    constexpr static int64_t BYTES_PER_ELEM_FP16 =
+        2 * PIPELINE_DEPTH * sizeof(uint16_t) + 2 * sizeof(float);
+    constexpr static int64_t BYTES_PER_ELEM_MAX =
+        std::max(BYTES_PER_ELEM_FP32, BYTES_PER_ELEM_FP16);
+
     auto ascendcPlatform = platform_ascendc::PlatformAscendCManager::GetInstance();
+    uint64_t ubSize = 0;
+    ascendcPlatform->GetCoreMemSize(platform_ascendc::CoreMemType::UB, ubSize);
     int64_t coreNum = ascendcPlatform->GetCoreNumAiv();
     if (coreNum <= 0) coreNum = 1;
     int64_t numBlocks = std::min(coreNum, (totalLength + MIN_ELEMS_PER_CORE - 1) / MIN_ELEMS_PER_CORE);
     numBlocks = std::max(numBlocks, static_cast<int64_t>(1));
     int64_t blockLength = (totalLength + numBlocks - 1) / numBlocks;
-    return std::make_tuple(numBlocks, blockLength, static_cast<int64_t>(FIXED_TILE_ELEMS));
+    int64_t tileSize = static_cast<int64_t>(ubSize) / BYTES_PER_ELEM_MAX;
+    // Enforce strict 32 B alignment on every InitBuffer size (the GetUbBlockSize()
+    // granularity ops-nn aligns to): the narrowest supported T is fp16 at 2 B, so
+    // flooring the element count to 32 B / 2 B = 16 makes tileSize * sizeof(T) an
+    // exact multiple of 32 B for every dtype (fp16 buffers land exactly on 32 B,
+    // the 4 B fp32/cast buffers on 64 B) and TPipe applies no padding.
+    // A no-op on 910B3: 196352 / 16 = 12272 = 16 * 767, so the aligned tile
+    // fills the UB exactly (196352 B allocated, ~100% utilization).
+    constexpr static int64_t TILE_ALIGN_ELEMS = 32 / sizeof(uint16_t);
+    tileSize -= tileSize % TILE_ALIGN_ELEMS;
+    // A zero tileSize would divide by zero in Init().
+    if (tileSize < 1) tileSize = 1;
+    return std::make_tuple(numBlocks, blockLength, tileSize);
 }
 
 extern "C" {

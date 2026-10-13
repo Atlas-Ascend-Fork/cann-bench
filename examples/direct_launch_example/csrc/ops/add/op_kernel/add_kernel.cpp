@@ -100,6 +100,10 @@ std::tuple<int64_t, int64_t, int64_t> calc_add_tiling_params(int64_t totalLength
     int64_t numBlocks = std::min(coreNum, (totalLength + MIN_ELEMS_PER_CORE - 1) / MIN_ELEMS_PER_CORE);
     int64_t blockLength = (totalLength + numBlocks - 1) / numBlocks;
     int64_t tileSize = ubSize / PIPELINE_DEPTH / BUFFER_NUM;
+    // Floor-align to the 32 B UB block granularity (ops-nn convention). Without
+    // this the 6 buffers land 2 bytes under UB on 910B3 (196350 / 196352) -- a
+    // margin any allocation padding would blow. 32725 -> 32704 B leaves 128 B.
+    tileSize -= tileSize % 32;
     return std::make_tuple(numBlocks, blockLength, tileSize);
 }
 

@@ -32,6 +32,15 @@ SHAPES = [
     (100,),
     (1024,),
     (10000,),
+    # Regression cases at one and two UB tiles (tileSize is 12272 elements on
+    # 910B3: UB / 16 B-per-element, depth included). These pin the exact tile
+    # boundary and the tail-tile path at both scales; (1000, 1000) below keeps
+    # the multi-tile-per-core loop covered.
+    (12271,),
+    (12272,),
+    (12273,),
+    (24544,),
+    (24545,),
     (10, 10),
     (32, 32),
     (100, 100),
@@ -49,7 +58,17 @@ SHAPES = [
 
 DTYPES = [
     torch.float32,
+    torch.float16,
+    torch.bfloat16,
 ]
+
+# The fp16/bf16 kernels round-trip through fp32 and cast back, so compare with
+# a ~1-2 ulp tolerance of the storage dtype instead of the fp32-level one.
+TOLERANCES = {
+    torch.float32: (1e-4, 1e-4),
+    torch.float16: (1e-3, 1e-3),
+    torch.bfloat16: (1e-2, 1e-2),
+}
 
 
 @pytest.mark.skipif(not torch.npu.is_available(), reason="NPU device not found")
@@ -71,7 +90,8 @@ def test_sqrt_operator(shape, dtype):
     result_npu = torch.ops.cann_bench.sqrt(a_npu)
     result = result_npu.cpu()
 
-    assert torch.allclose(result, expected, rtol=1e-4, atol=1e-4), \
+    rtol, atol = TOLERANCES[dtype]
+    assert torch.allclose(result, expected, rtol=rtol, atol=atol), \
         f"Sqrt failed for shape {shape}, dtype {dtype}. " \
         f"Max diff: {torch.max(torch.abs(result - expected)):.6f}"
 
