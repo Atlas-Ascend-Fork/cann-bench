@@ -24,5 +24,5 @@ bash bench_lab/stanford_bench/download.sh
 bash scripts/run_evaluation.sh --bench-name stanford
 
 # 或手动下载后指定路径
-bash scripts/run_evaluation.sh --bench-name stanford --tasks-root bench_lab/stanford_bench/KernelBench/KernelBench
+bash scripts/run_evaluation.sh --bench-name stanford --task-dir bench_lab/stanford_bench/KernelBench/KernelBench
 ```
