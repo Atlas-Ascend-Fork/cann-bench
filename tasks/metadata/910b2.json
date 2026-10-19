@@ -9,9 +9,9 @@
       20
     ],
     "release_status": "pending_npu_revalidation",
-    "baseline_policy": "Retain existing non-missing source values. Missing baseline durations are estimated as 3 * t_hw_us, corresponding to one third of theoretical performance; these are not hardware measurements.",
+    "baseline_policy": "Retain existing non-missing, non-degenerate source values. Missing baseline durations, and degenerate ones equal to t_hw_us (zero scoring span), are estimated as 3 * t_hw_us, corresponding to one third of theoretical performance; these are not hardware measurements.",
     "imputed_baseline_formula": "3 * t_hw_us",
-    "imputed_baseline_count": 334,
+    "imputed_baseline_count": 335,
     "imputed_baseline_cases": [
       "level2/gather/1",
       "level2/gather/10",
@@ -44,6 +44,7 @@
       "level2/grid_sampler_3d/15",
       "level2/grid_sampler_3d/16",
       "level2/grid_sampler_3d/5",
+      "level2/scatter/12",
       "level3/aggregate_hidden/1",
       "level3/aggregate_hidden/10",
       "level3/aggregate_hidden/11",
@@ -1382,7 +1383,7 @@
         "t_hw_us": 2.74
       },
       "12": {
-        "baseline_perf_us": 6.83,
+        "baseline_perf_us": 20.490000000000002,
         "t_hw_us": 6.83
       },
       "13": {

@@ -21,7 +21,7 @@
   "missing_baseline_policy": {
     "formula": "3 * t_hw_us",
     "meaning": "One third of theoretical performance expressed as duration; estimated, not measured.",
-    "scope": "Missing or non-positive baselines in existing supported platform records only; preserve existing positive baselines and t_hw_us.",
+    "scope": "Missing, non-positive, or degenerate (equal to t_hw_us) baselines in existing supported platform records only; preserve other existing positive baselines and all t_hw_us.",
     "provenance": "Each metadata file lists imputed_baseline_cases under _metadata. Unsupported or absent platform records are not synthesized."
   },
   "public_adjustments": [
@@ -757,6 +757,9 @@
   ],
   "metadata_fallback_policy": "same_platform_only",
   "unsupported_operators_by_platform": {
+    "910b2": [
+      "embedding_hash_table_lookup_or_insert"
+    ],
     "910c": [
       "dynamic_mx_quant",
       "embedding_hash_table_lookup_or_insert"

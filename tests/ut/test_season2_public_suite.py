@@ -94,6 +94,7 @@ def test_metadata_has_only_selected_public_records(platform, missing):
     assert {p.stem for p in (TASKS/'metadata').glob('*.json')} == {'910b2','910c','950pr','950dt'}
     assert set(MANIFEST['published_metadata_platforms']) == {'910b2','910c','950pr','950dt'}
     assert set(MANIFEST['unsupported_operators_by_platform']['910c']) == {'dynamic_mx_quant','embedding_hash_table_lookup_or_insert'}
+    assert set(MANIFEST['unsupported_operators_by_platform']['910b2']) == {'embedding_hash_table_lookup_or_insert'}
 
 
 def test_moe_topk_membership_contract():
@@ -140,7 +141,7 @@ def test_950_metadata_loads_own_platform(platform, hardware):
                 assert store.has_baseline(f'{level}/{op}',int(cid))
 
 
-@pytest.mark.parametrize('platform,count', [('910b2',334),('910c',70)])
+@pytest.mark.parametrize('platform,count', [('910b2',335),('910c',70)])
 def test_missing_baselines_are_explicit_theory_estimates(platform, count):
     data=json.loads((TASKS/'metadata'/f'{platform}.json').read_text(encoding='utf-8'))
     declared=data['_metadata']['imputed_baseline_cases']

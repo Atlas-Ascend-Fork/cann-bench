@@ -24,7 +24,7 @@
 
 本次公开 910B2、910C、950PR 和 950DT 的 metadata，且只保留入选算子的公开 case ID。现有支持平台记录缺失基线时，以 `baseline_perf_us = 3 × t_hw_us` 补齐，含义为理论性能的三分之一，不是理论耗时的三分之一；估算值不伪装为实测值。Season2 禁止跨平台 metadata 回退，不借用 910B2 数据给其他平台评分。已有正数基线及理论值保持不变，仍需在新题集和目标软件环境下复核；本次题集切换不代表已完成性能验收。
 
-910B2 的 1180 条公开记录中原缺失的 334 条基线、910C 的 1160 条公开记录中原缺失的 70 条基线，已按上述规则补齐。各文件 `_metadata.imputed_baseline_cases` 逐条列出估算记录，`imputed_baseline_formula` 和 `imputed_baseline_count` 记录公式与数量，便于后续以实测替换。950PR/950DT 当前记录均有基线，无需估算补值。Hash 算子当前文档仅声明支持 950，因此两个 910 metadata 文件均没有它的记录；不会为不支持项或整个平台缺失的记录凭空构造理论值。
+910B2 的 1180 条公开记录中原缺失的 334 条基线、910C 的 1160 条公开记录中原缺失的 70 条基线，已按上述规则补齐；此外 910B2 的 `level2/scatter` case 12 原基线与 `t_hw_us` 相同（6.83 = 6.83，评分区间宽度为零，任何实现的该 case 性能分恒为 0），属退化锚点，同样按 3 × t_hw_us 补估并计入 `imputed_baseline_cases`（910B2 合计 335 条）。各文件 `_metadata.imputed_baseline_cases` 逐条列出估算记录，`imputed_baseline_formula` 和 `imputed_baseline_count` 记录公式与数量，便于后续以实测替换。950PR/950DT 当前记录均有基线，无需估算补值。Hash 算子当前文档仅声明支持 950，因此两个 910 metadata 文件均没有它的记录；不会为不支持项或整个平台缺失的记录凭空构造理论值。
 
 `embedding_hash_table_lookup_or_insert` 和 `dynamic_mx_quant` 在当前 A3（910C）平台不支持，标记为 Unsupported / N/A；主线仍保留 60 个题包，A3 有效评测范围为 58 题、1160 个公开用例。这两题不应作为普通失败项扣分，也不应计入通过率和得分分母；排除名单已写入 `suite_manifest.json`，自动排除计分须由评测平台接入，本次不宣称该平台接入已完成。
 

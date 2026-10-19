@@ -91,6 +91,14 @@ class DataGenerator:
             return None
 
         torch_dtype = str_to_torch_dtype(dtype)
+
+        # 唯一整数索引（D9.2，scatter reduce=null 等）：value_range 形如
+        # ["unique", min, max]，生成 [min, max] 内无重复的随机整数。
+        if self._is_unique_range(value_range):
+            return self._gen_unique_int(shape, torch_dtype, dtype,
+                                        value_range[1], value_range[2],
+                                        generator=generator)
+
         min_val, max_val = self._parse_range(value_range, dtype)
 
         if is_float_dtype(dtype):
@@ -287,11 +295,61 @@ class DataGenerator:
 
         if isinstance(value_range, list):
             if len(value_range) >= 2:
-                return (value_range[0], value_range[1])
+                return (self._coerce_endpoint(value_range[0]),
+                        self._coerce_endpoint(value_range[1]))
             elif len(value_range) == 1:
-                return (value_range[0], value_range[0])
+                v = self._coerce_endpoint(value_range[0])
+                return (v, v)
 
-        return (value_range, value_range)
+        v = self._coerce_endpoint(value_range)
+        return (v, v)
+
+    @staticmethod
+    def _coerce_endpoint(val: Any) -> Any:
+        """把数值型字符串端点归一为 float。
+
+        YAML 1.1 把无符号指数的科学计数法（如 ``-1.0e38``，缺 ``e+38`` 的
+        正号）解析成**字符串**而非 float。若不归一，这类端点会被误路由到
+        特殊值路径 ``_gen_special``——它只按 [-1, 1] 生成普通样本再 clamp，
+        声明的近溢出区间被静默替换掉。``nan`` / ``inf`` 特殊标记保持字符串
+        原样，仍由既有特殊值路径处理（随机数消费顺序不变）。
+        """
+        if not isinstance(val, str):
+            return val
+        if val.strip().lower() in ("nan", "inf", "-inf", "+inf"):
+            return val
+        try:
+            return float(val)
+        except ValueError:
+            return val
+
+    @staticmethod
+    def _is_unique_range(value_range: Any) -> bool:
+        """检测唯一整数值域声明 ["unique", min, max]"""
+        return (isinstance(value_range, list) and len(value_range) == 3
+                and value_range[0] == "unique")
+
+    def _gen_unique_int(self, shape: List[int], torch_dtype: torch.dtype, dtype: str,
+                        min_val: Any, max_val: Any,
+                        generator: Optional[torch.Generator] = None) -> torch.Tensor:
+        """生成 [min, max] 闭区间内无重复的随机整数张量（D9.2）。
+
+        要求 dtype 为整数且区间容量 >= 元素数；不满足时大声失败而非静默回退，
+        保证"索引唯一"这一 case 声明不会被悄悄破坏。
+        """
+        if not is_int_dtype(dtype):
+            raise ValueError(f"unique 值域仅支持整数 dtype，收到 {dtype}")
+        lo, hi = int(min_val), int(max_val)
+        numel = 1
+        for s in shape:
+            numel *= int(s)
+        span = hi - lo + 1
+        if span < numel:
+            raise ValueError(
+                f"unique 值域容量不足: 区间 [{lo}, {hi}] 共 {span} 个值，"
+                f"张量需要 {numel} 个唯一值")
+        perm = torch.randperm(span, generator=generator)[:numel]
+        return (perm + lo).reshape(shape).to(torch_dtype)
 
     @staticmethod
     def _is_special_float(val: Any) -> bool:
@@ -521,7 +579,7 @@ class DataGenerator:
             vr_item = value_ranges if (
                 isinstance(value_ranges, list) and len(value_ranges) == 2
                 and not isinstance(value_ranges[0], list)
-            ) else None
+            ) or self._is_unique_range(value_ranges) else None
             output.append(self.generate_input_tensor(shapes, dtype_item, vr_item, generator=generator))
             return
 
@@ -536,7 +594,8 @@ class DataGenerator:
             elif isinstance(s, list) and (not s or isinstance(s[0], int)):
                 # s 是单个 shape [N, C, H, W] 或 rank-0 标量 shape [] -> 单个 tensor
                 dtype_item = d if isinstance(d, str) else (d[0] if isinstance(d, list) and d else 'float32')
-                vr_item = vr if isinstance(vr, list) and len(vr) == 2 and not isinstance(vr[0], list) else None
+                vr_item = vr if (isinstance(vr, list) and len(vr) == 2 and not isinstance(vr[0], list)) \
+                    or self._is_unique_range(vr) else None
                 output.append(self.generate_input_tensor(s, dtype_item, vr_item, generator=generator))
             elif isinstance(s, list) and s and isinstance(s[0], list) and s[0] and isinstance(s[0][0], int):
                 # s 是 TensorList [[shape1], [shape2], ...] 其中 shape_i 是 int list
