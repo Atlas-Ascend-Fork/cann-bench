@@ -17,13 +17,27 @@
 - 精度通过但没有 NPU 性能数据时,调用方显式传入 n_no_perf_pass,整算子按 0 分处理。
 """
 
+import pytest
 from kernel_eval.report.scoring import (
+
+
     NO_NPU_PERF_ERROR_CODE,
     aggregate_eq4,
     WEIGHT_COMPILATION,
     WEIGHT_FUNCTION,
     WEIGHT_PERFORMANCE,
 )
+
+@pytest.fixture(autouse=True)
+def _pin_season1_weights(monkeypatch):
+    """本文件的数值断言按 season-1 权重档（0.2/0.3/0.5，无 bonus）书写。
+
+    该档作为历史口径永久保留、逐位不变（经 CANN_BENCH_SCORE_WEIGHTS=season1
+    或 weights="season1" 切换）；season-2 默认档的行为由
+    test_score_weights_season2.py 钉死。
+    """
+    monkeypatch.setenv("CANN_BENCH_SCORE_WEIGHTS", "season1")
+
 
 
 def test_missing_perf_zeros_only_perf_keeps_function_and_total():

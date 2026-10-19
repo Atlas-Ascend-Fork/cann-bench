@@ -333,13 +333,30 @@ def exp(
 
 ### 4.1 三大评测维度
 
-| 维度 | 权重 | 评测重点 | 评测工具 | 评分范围 |
+| 维度 | 权重（season2 现行档） | 评测重点 | 评测工具 | 评分范围 |
 |------|------|----------|----------|----------|
-| 编译/运行正确性 | w_c = 0.2 | 编译通过，且用例不存在非数值精度类运行/接口错误 | cmake、gtest | δ_compile/runtime ∈ [0, 1] |
-| 精度正确性 | w_f = 0.3 | 通过测试用例Golden数值精度对比 | cmake、gtest | δ_precision,i ∈ {0, 1} |
-| 性能优化性 | w_p = 0.5 | hardware-anchored 分数（见 §4.2）| msprof、cannsim | score_i ∈ [0, ≥1] |
+| 编译/运行正确性 | w_c = 0.05 | 编译通过，且用例不存在非数值精度类运行/接口错误 | cmake、gtest | δ_compile/runtime ∈ [0, 1] |
+| 精度正确性 | w_f = 0.20 | 通过测试用例Golden数值精度对比 | cmake、gtest | δ_precision,i ∈ {0, 1} |
+| 全用例通过 bonus | w_b = 0.05 | 全部 N 个用例精度通过（δ_all = ∏ δ_precision,i） | cmake、gtest | δ_all ∈ {0, 1} |
+| 性能优化性 | w_p = 0.70 | hardware-anchored 分数（见 §4.2）| msprof、cannsim | score_i ∈ [0, ≥1] |
 
 权重之和 = 1，单算子满分 100。
+
+**权重档**：单一事实来源在 `src/kernel_eval/base/score_weights.py`，提供两套
+并存配置：
+
+| 权重档 | w_c（编译/运行） | w_f（精度） | w_b（全通过 bonus） | w_p（性能） |
+|--------|------|------|------|------|
+| `season2`（**默认**，season-2 现行口径） | 0.05 | 0.20 | 0.05 | 0.70 |
+| `season1`（历史档，season-1 口径） | 0.20 | 0.30 | 0 | 0.50 |
+
+`season2` 档即"5 编译 + 20 精度 + 5 全通过 bonus + 70 性能"：性能权重提高到
+70 分以放大优化区分度；新增 bonus 项 `w_b · δ_all · 100`（`δ_all = ∏_i
+δ_precision,i`，全部 N 个用例精度通过才为 1，漏跑视为未通过；反作弊置零路径
+同样清零 bonus）。`season1` 档为第一赛季历史口径，**逐位保留不变**，复算
+season-1 数据时切换：调用侧显式传 `weights="season1"`，或设环境变量
+`CANN_BENCH_SCORE_WEIGHTS=season1`。权重档与单用例公式（`eq3` / `eq3_log`，
+见 §4.2）**正交**——任一权重档下两条公式均可用，任意组合互不影响。
 
 ### 4.2 核心评测指标
 
@@ -381,17 +398,20 @@ $$
 **单算子综合评分** (bench.tex Eq. 4)：
 
 ```
-EachOperatorScore = [ w_c · δ_compile/runtime + Σ_i δ_precision,i · (w_f + w_p · score_i) / N ] · 100
+EachOperatorScore = [ w_c · δ_compile/runtime + w_b · δ_all + Σ_i δ_precision,i · (w_f + w_p · score_i) / N ] · 100
 
 其中：
   δ_compile/runtime = 0: 整份提交编译失败、无法调度或整算子运行失败
   δ_compile/runtime = (N - N_compile/runtime_fail) / N: 编译通过后按 case 计算
   δ_precision,i ∈ {0, 1}: 用例 i 是否通过数值精度校验，δ_compile/runtime = 0 时 δ_precision,i ≡ 0
+  δ_all = ∏_i δ_precision,i: 全部 N 个用例精度通过才为 1（漏跑视为未通过）
   score_i: 单用例 hardware-anchored 性能得分
   N = len(cases)
 ```
 
-权重默认为 (w_c, w_f, w_p) = (0.2, 0.3, 0.5)，归一化后单算子满分 100。
+权重默认为 (w_c, w_f, w_p, w_b) = (0.05, 0.20, 0.70, 0.05)（`season2` 档，
+season-2 现行口径）；`season1` 历史档为 (0.2, 0.3, 0.5, 0)（bonus 项恒为 0，
+逐位保留，供旧数据复算），见 §4.1 权重档说明。归一化后单算子满分 100。
 
 **聚合规则** (bench.tex Eq. 5)：
 

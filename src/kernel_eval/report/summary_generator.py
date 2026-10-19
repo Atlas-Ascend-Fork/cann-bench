@@ -55,8 +55,9 @@ class OperatorSummary:
     compilation_score: float = 0.0
     compile_runtime_fail_cases: int = 0
     function_score: float = 0.0
+    bonus_score: float = 0.0  # 全用例精度通过 bonus（w_b·δ_all·100；season1 档 w_b=0 恒为 0）
     performance_score: float = 0.0
-    composite_score: float = 0.0  # EachOperatorScore，常规区间 [0, 100]；T_cand<T_HW 时可 >100（不截断）
+    composite_score: float = 0.0  # EachOperatorScore，常规区间 [0, 100]；T_cand<T_HW 的 HAP 奖励可 >100，受 OPERATOR_SCORE_CAP 封顶
     # 可选字段：当算子跑不起来时的原因（编译失败 / 子进程超时或崩溃）。
     # 为 None 时渲染普通的 case 表；非空时在小节头下方优先渲染原因块。
     compilation_error: Optional[str] = None
@@ -173,6 +174,7 @@ def _composite_score_from_dict(op_result: Dict[str, Any]) -> Dict[str, float]:
         "compilation_score": agg["compilation_score"],
         "compile_runtime_fail_cases": agg.get("n_compile_runtime_fail", 0),
         "function_score": agg["function_score"],
+        "bonus_score": agg.get("bonus_score", 0.0),
         "performance_score": agg["performance_score"],
         "composite_score": agg["total_score"],
         "score_error_code": agg.get("score_error_code"),
@@ -242,6 +244,7 @@ def calculate_operator_summary(op_result: Dict[str, Any]) -> OperatorSummary:
         compilation_score=scores["compilation_score"],
         compile_runtime_fail_cases=scores["compile_runtime_fail_cases"],
         function_score=scores["function_score"],
+        bonus_score=scores.get("bonus_score", 0.0),
         performance_score=scores["performance_score"],
         composite_score=scores["composite_score"],
         compilation_error=op_result.get("compilation_error"),

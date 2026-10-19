@@ -15,7 +15,8 @@
 CANN 评分模块
 
 包含：
-- 权重常量 (WEIGHT_COMPILATION, WEIGHT_FUNCTION, WEIGHT_PERFORMANCE)
+- 权重常量 (WEIGHT_COMPILATION, WEIGHT_FUNCTION, WEIGHT_PERFORMANCE —— season1
+  档的兼容别名；权重档的单一事实来源在 base/score_weights.py)
 - OperatorScoreInfo: 算子级得分信息
 - per_case_sol_score: 单用例 SOL-Score 计算
 - aggregate_eq4: 单算子综合分聚合
@@ -25,8 +26,9 @@ CANN 评分模块
 评分公式 (docs/spec/benchmark_spec.md §3.3 / Eq. 3, 4, 5):
 - 单用例性能得分: score_i = (T_baseline - T_HW) / ((T_cand - T_HW) + (T_baseline - T_HW))
 - 单算子综合评分: EachOperatorScore =
-      [ w_c · δ_pass + Σ_i δ_acc,i · (w_f + w_p · score_i) / len(cases) ] · 100
-  权重: w_c=0.2, w_f=0.3, w_p=0.5  (sum=1, 单算子满分=100)
+      [ w_c · δ_pass + w_b · δ_all + Σ_i δ_acc,i · (w_f + w_p · score_i) / len(cases) ] · 100
+  权重档: season2（默认，现行口径）w_c=0.05, w_f=0.20, w_b=0.05, w_p=0.70；
+  season1（历史档，可切换复算）w_c=0.2, w_f=0.3, w_p=0.5, w_b=0 (sum=1, 单算子满分=100)
 """
 
 import logging
@@ -35,6 +37,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..base.perf_metric import OPERATOR_SCORE_CAP, compute_perf_score
+from ..base.score_weights import resolve_score_weights
 from ..base.scoring import ScoringScheme, CaseScoreInfo
 from ..base.result import PerfResult, is_compile_runtime_case_failure
 from ..eval.results import EvalOperatorResult  # 直接导入模块，避免循环导入
@@ -43,11 +46,14 @@ from ..eval.results import EvalOperatorResult  # 直接导入模块，避免循�
 _logger = logging.getLogger(__name__)
 
 
-# === 权重配置（bench.tex §3.5）===
+# === 权重配置（bench.tex §3.5 = season1 档）===
+# 仅作兼容别名保留——权重档的单一事实来源在 base/score_weights.py，
+# aggregate_eq4 未显式传权重时按环境变量 CANN_BENCH_SCORE_WEIGHTS 解析
+# （默认 season2 现行口径；season1 为历史档，可切换用于旧数据复算）。
 
-WEIGHT_COMPILATION = 0.2  # w_c
-WEIGHT_FUNCTION = 0.3     # w_f
-WEIGHT_PERFORMANCE = 0.5  # w_p
+WEIGHT_COMPILATION = 0.2  # w_c (season1)
+WEIGHT_FUNCTION = 0.3     # w_f (season1)
+WEIGHT_PERFORMANCE = 0.5  # w_p (season1)
 
 NO_NPU_PERF_ERROR_CODE = "no_npu_kernel_detected"
 NO_NPU_PERF_ERROR = "未检测到 NPU 算子执行，疑似 CPU fallback，反作弊触发。"
@@ -73,6 +79,7 @@ class OperatorScoreInfo:
     compilation_score: float = 0.0
     compile_runtime_fail_cases: int = 0
     function_score: float = 0.0
+    bonus_score: float = 0.0  # 全用例精度通过 bonus（w_b·δ_all·100；season1 档 w_b=0 恒为 0）
     performance_score: float = 0.0
     total_score: float = 0.0  # 单算子综合得分，[0, 100]
     # 调试用：每个用例的 hardware-anchored 分数，None 表示数据不全或未通过精度门
@@ -94,6 +101,7 @@ class OperatorScoreInfo:
             'compile_runtime_score': self.compilation_score,
             'compile_runtime_fail_cases': self.compile_runtime_fail_cases,
             'function_score': self.function_score,
+            'bonus_score': self.bonus_score,
             'performance_score': self.performance_score,
             'total_score': self.total_score,
             'per_case_scores': self.per_case_scores,
@@ -297,23 +305,42 @@ def aggregate_eq4(
     compile_passed: bool,
     total_cases: int,
     case_scores: List[Tuple[bool, Optional[float]]],
-    wc: float = WEIGHT_COMPILATION,
-    wf: float = WEIGHT_FUNCTION,
-    wp: float = WEIGHT_PERFORMANCE,
+    wc: Optional[float] = None,
+    wf: Optional[float] = None,
+    wp: Optional[float] = None,
     rel_path: Optional[str] = None,
     n_no_perf_pass: int = 0,
     n_compile_runtime_fail: int = 0,
+    wb: Optional[float] = None,
+    weights: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Eq.4 单算子综合分聚合——单一事实来源。
 
     EachOperatorScore =
-        [ w_c·δ_compile_runtime + Σ_i δ_acc,i (w_f + w_p·score_i) / N ] · 100
+        [ w_c·δ_compile_runtime + w_b·δ_all + Σ_i δ_acc,i (w_f + w_p·score_i) / N ] · 100
+
+    其中 δ_all = ∏_i δ_acc,i（全部 N=total_cases 个用例精度通过才为 1，
+    漏跑视为未通过）；反作弊置零路径同样清零 bonus。
+
+    ``wc/wf/wp/wb`` 传 None（默认）时按 ``weights`` 权重档解析
+    （``base/score_weights.py``）：显式传 ``weights="season2"``，或设环境变量
+    ``CANN_BENCH_SCORE_WEIGHTS=season1``，均未指定时取 ``season2``
+    （0.05/0.20/0.70/0.05，"5 编译 + 20 精度 + 5 全通过 bonus + 70 性能"，
+    season-2 现行口径）。``season1`` 历史档为 0.2/0.3/0.5/0（逐位保留，
+    供旧数据复算）。权重档与单用例公式
+    （eq3 / eq3_log）正交，任意组合均可用。
 
     n_no_perf_pass 仅统计 kernel_details.csv 已产出但无 NPU kernel 的 case
     （疑似 CPU fallback，触发反作弊）。profiler 采集功能异常（未产出 CSV）
     的 case 不计入此参数，由调用方在 calculate_operator_score 中提前识别并
     归入 n_perf_missing，不触发反作弊。
     """
+    profile = resolve_score_weights(weights)
+    wc = profile.wc if wc is None else wc
+    wf = profile.wf if wf is None else wf
+    wp = profile.wp if wp is None else wp
+    wb = profile.wb if wb is None else wb
+
     delta_pass = 1 if compile_passed else 0
     n_func_pass = 0
     n_perf_missing = 0
@@ -343,6 +370,7 @@ def aggregate_eq4(
         return {
             "compilation_score": 0.0,
             "function_score": 0.0,
+            "bonus_score": 0.0,
             "performance_score": 0.0,
             "total_score": 0.0,
             "per_case_scores": per_case_scores,
@@ -357,10 +385,14 @@ def aggregate_eq4(
     compile_runtime_pass_cases = 0
     if compile_passed and total_cases > 0:
         compile_runtime_pass_cases = max(total_cases - n_compile_runtime_fail, 0)
+    delta_all = 1 if (compile_passed and total_cases > 0
+                      and n_func_pass == total_cases) else 0
     compilation_score = (compile_runtime_pass_cases * wc / total_cases) * 100.0 if total_cases > 0 else 0.0
     function_score = (n_func_pass * wf / total_cases) * 100.0
+    bonus_score = wb * delta_all * 100.0
     performance_score = (perf_score_sum * wp / total_cases) * 100.0
-    total_score = compilation_score + function_score + performance_score
+    total_score = (compilation_score + function_score + bonus_score
+                   + performance_score)
     # HAP > 1 的奖励分允许 total_score 突破名义满分 100，但以 OPERATOR_SCORE_CAP
     # 封顶，保证单算子对 Level 分 / 总分的贡献有界；未截断值随结果一并返回。
     total_score_uncapped = total_score
@@ -374,6 +406,7 @@ def aggregate_eq4(
     return {
         "compilation_score": compilation_score,
         "function_score": function_score,
+        "bonus_score": bonus_score,
         "performance_score": performance_score,
         "total_score": total_score,
         "total_score_uncapped": total_score_uncapped,
@@ -390,17 +423,37 @@ def aggregate_eq4(
 # === 评分计算器 ===
 
 class ScoringCalculator:
-    """评分计算器"""
+    """评分计算器
+
+    ``wc/wf/wp/wb`` 传 None（默认）时按 ``weights`` 权重档在**每次聚合时**
+    解析（支持环境变量 ``CANN_BENCH_SCORE_WEIGHTS`` 运行期切换）；显式传入
+    的值优先于权重档。
+    """
 
     def __init__(
         self,
-        wc: float = WEIGHT_COMPILATION,
-        wf: float = WEIGHT_FUNCTION,
-        wp: float = WEIGHT_PERFORMANCE,
+        wc: Optional[float] = None,
+        wf: Optional[float] = None,
+        wp: Optional[float] = None,
+        wb: Optional[float] = None,
+        weights: Optional[str] = None,
     ):
         self.wc = wc
         self.wf = wf
         self.wp = wp
+        self.wb = wb
+        self.weights = weights
+
+    def _effective_weights(self):
+        """解析当前生效的 (wc, wf, wp, wb)——仅用于展示/分解，聚合在
+        aggregate_eq4 内部自行解析（同一规则）。"""
+        profile = resolve_score_weights(self.weights)
+        return (
+            profile.wc if self.wc is None else self.wc,
+            profile.wf if self.wf is None else self.wf,
+            profile.wp if self.wp is None else self.wp,
+            profile.wb if self.wb is None else self.wb,
+        )
 
     def calculate_operator_score(self, result: EvalOperatorResult) -> OperatorScoreInfo:
         """单算子综合得分 (Eq. 4)。"""
@@ -477,6 +530,7 @@ class ScoringCalculator:
             rel_path=result.rel_path,
             n_no_perf_pass=n_no_perf_pass,
             n_compile_runtime_fail=n_compile_runtime_fail,
+            wb=self.wb, weights=self.weights,
         )
 
         return OperatorScoreInfo(
@@ -490,6 +544,7 @@ class ScoringCalculator:
             compilation_score=agg["compilation_score"],
             compile_runtime_fail_cases=agg.get("n_compile_runtime_fail", 0),
             function_score=agg["function_score"],
+            bonus_score=agg.get("bonus_score", 0.0),
             performance_score=agg["performance_score"],
             total_score=agg["total_score"],
             per_case_scores=agg["per_case_scores"],
@@ -543,6 +598,7 @@ class ScoringCalculator:
     def get_score_breakdown(self, result: EvalOperatorResult) -> Dict[str, Any]:
         """获取得分分解详情"""
         score_info = self.calculate_operator_score(result)
+        wc, wf, wp, wb = self._effective_weights()
         return {
             'operator': score_info.operator,
             'rel_path': score_info.rel_path,
@@ -553,28 +609,34 @@ class ScoringCalculator:
             'avg_speedup': score_info.avg_speedup,
             'compilation_score': {
                 'formula': 'w_c · (N - compile_runtime_fail_cases) / N · 100',
-                'weight': self.wc,
+                'weight': wc,
                 'delta_pass': 1 if score_info.compile_passed else 0,
                 'compile_runtime_fail_cases': score_info.compile_runtime_fail_cases,
                 'score': score_info.compilation_score,
             },
             'function_score': {
                 'formula': '(Σ δ_acc,i · w_f / N) · 100',
-                'weight': self.wf,
+                'weight': wf,
                 'passed_cases': score_info.passed_cases,
                 'total_cases': score_info.total_cases,
                 'score': score_info.function_score,
             },
+            'bonus_score': {
+                'formula': 'w_b · δ_all · 100, δ_all = ∏ δ_acc,i',
+                'weight': wb,
+                'score': score_info.bonus_score,
+            },
             'performance_score': {
                 'formula': '(Σ δ_acc,i · w_p · score_i / N) · 100',
-                'weight': self.wp,
+                'weight': wp,
                 'per_case_scores': score_info.per_case_scores,
                 'score': score_info.performance_score,
             },
             'total_score': {
-                'formula': '[ w_c · δ_pass + Σ δ_acc,i (w_f + w_p · score_i) / N ] · 100',
+                'formula': '[ w_c · δ_pass + w_b · δ_all + Σ δ_acc,i (w_f + w_p · score_i) / N ] · 100',
                 'compilation': score_info.compilation_score,
                 'function': score_info.function_score,
+                'bonus': score_info.bonus_score,
                 'performance': score_info.performance_score,
                 'score': score_info.total_score,
             },

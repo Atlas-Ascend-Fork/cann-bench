@@ -44,6 +44,17 @@ from kernel_eval.report.scoring import (
 )
 from kernel_eval.report.summary_generator import calculate_operator_summary, generate_summary
 
+@pytest.fixture(autouse=True)
+def _pin_season1_weights(monkeypatch):
+    """本文件的数值断言按 season-1 权重档（0.2/0.3/0.5，无 bonus）书写。
+
+    该档作为历史口径永久保留、逐位不变（经 CANN_BENCH_SCORE_WEIGHTS=season1
+    或 weights="season1" 切换）；season-2 默认档的行为由
+    test_score_weights_season2.py 钉死。
+    """
+    monkeypatch.setenv("CANN_BENCH_SCORE_WEIGHTS", "season1")
+
+
 
 class TestPerCaseSolScore:
     """Eq.3: score_i = (T_base - T_HW) / ((T_cand - T_HW) + (T_base - T_HW))"""
