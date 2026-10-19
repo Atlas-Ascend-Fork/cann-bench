@@ -36,7 +36,7 @@ $$
 其中 grad 的 spatial 维度需满足：
 
 $$
-D_{out} = \frac{D_{in} + 2 \cdot \text{pad}_d - \text{dilation}_d \cdot (K_d - 1) - 1}{\text{stride}_d} + 1
+D_{out} = \left\lfloor\frac{D_{in} + \text{pad}_{front} + \text{pad}_{back} - \text{dilation}_d \cdot (K_d - 1) - 1}{\text{stride}_d}\right\rfloor + 1
 $$
 
 ## 3. 接口规范
@@ -83,6 +83,7 @@ cann_bench.conv_3d_backprop_filter(Tensor x, Tensor grad, int[] strides, int[] p
 - groups 指定分组数，C_in 和 C_out 都须能被 groups 整除
 - filter_size 指定输出 filter 梯度的 shape
 - grad 的 spatial 维度必须与 x、filter_size、strides、pads、dilations 计算的输出维度一致
+- 数值路径自由：实现可采用任意内部计算路径与精度（包括 HF32 以及多趟拆分/补偿算法等），只要输出满足本文档「精度要求」即为合法实现；精度门是唯一判据，不限定与 golden 相同的计算路径。
 
 ### 支持范围
 
@@ -155,7 +156,7 @@ def conv_3d_backprop_filter(
         x: 输入特征图，shape为[N, C_in, D, H, W]
         grad: 输出梯度，shape为[N, C_out, D_out, H_out, W_out]
         strides: 步长，3元素 [stride_d, stride_h, stride_w]
-        pads: 填充，6元素 [D_front, D_back, H_top, H_bottom, W_left, W_right]，对称时取front/top/left
+        pads: 填充，6元素 [D_front, D_back, H_top, H_bottom, W_left, W_right]
         dilations: 膨胀率，3元素 [dilation_d, dilation_h, dilation_w]
         groups: 分组数
         filter_size: filter的shape [C_out, C_in/groups, K_d, K_h, K_w]
@@ -164,14 +165,24 @@ def conv_3d_backprop_filter(
         filter梯度，shape与filter_size相同
     """
 
-    # pads 是 6 元素格式，对称 padding 时取 (D_front, H_top, W_left)
-    # 即 pads[0], pads[2], pads[4]
-    padding = (pads[0], pads[2], pads[4])
+    if filter_size is None:
+        raise ValueError("filter_size is required (proto.yaml declares it as a required attr)")
+
     stride = (strides[0], strides[1], strides[2])
     dilation = (dilations[0], dilations[1], dilations[2])
 
-    # 使用 torch.nn.grad.conv3d_weight 计算 filter 梯度
-    y = F.grad.conv3d_weight(x, tuple(filter_size), grad, stride=stride, padding=padding, dilation=dilation, groups=groups)
+    # conv3d_weight 仅接收三元素对称 padding。先显式执行六向 padding，
+    # 再以零 padding 计算 filter 梯度，才能保留 proto 声明的非对称语义。
+    x_padded = F.pad(x, (pads[4], pads[5], pads[2], pads[3], pads[0], pads[1]))
+    y = F.grad.conv3d_weight(
+        x_padded,
+        tuple(filter_size),
+        grad,
+        stride=stride,
+        padding=(0, 0, 0),
+        dilation=dilation,
+        groups=groups,
+    )
     return y
 ```
 

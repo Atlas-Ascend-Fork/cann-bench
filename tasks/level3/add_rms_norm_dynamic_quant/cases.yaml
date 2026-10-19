@@ -225,11 +225,8 @@ cases:
   - [256]
   dtype: [float16, float16, float16]
   attrs: {epsilon: 1.0e-06}
-  value_range:
-  - ["-inf", "inf"]
-  - ["-inf", "inf"]
-  - ["-inf", "inf"]
-  note: "S-inf-special-fp16 | baseline_kernels: AddRmsNormDynamicQuant×1"
+  value_range: [[-500, 500], [-500, 500], [-4, 4]]
+  note: "S-fp16-宽值域(x²和溢出fp16迫使fp32累加) [B:replaced ±inf degenerate] | baseline_kernels: AddRmsNormDynamicQuant×1"
 - operator: AddRmsNormDynamicQuant
   case_id: 18
   input_shape:
@@ -238,11 +235,8 @@ cases:
   - [256]
   dtype: [bfloat16, bfloat16, bfloat16]
   attrs: {epsilon: 1.0e-06}
-  value_range:
-  - ["nan", "nan"]
-  - ["nan", "nan"]
-  - ["nan", "nan"]
-  note: "S-nan-special-bf16 | baseline_kernels: AddRmsNormDynamicQuant×1"
+  value_range: [[0.5, 1.5], [-1.5, -0.5], [-1, 1]]
+  note: "S-bf16-近相消(随机非精确)-rms小值稳健性 [B:replaced all-NaN degenerate] | baseline_kernels: AddRmsNormDynamicQuant×1"
 - operator: AddRmsNormDynamicQuant
   case_id: 19
   input_shape:
@@ -251,11 +245,8 @@ cases:
   - [128]
   dtype: [float16, float16, float16]
   attrs: {epsilon: 1.0e-06}
-  value_range:
-  - [0, 0]
-  - [0, 0]
-  - [0, 0]
-  note: "S-zero-special-fp16 | baseline_kernels: AddRmsNormDynamicQuant×1"
+  value_range: [[0.5, 1.5], [-1.5, -0.5], [-1, 1]]
+  note: "S-fp16-近相消(随机非精确)-rms小值稳健性 [B:replaced all-zero degenerate] | baseline_kernels: AddRmsNormDynamicQuant×1"
 - operator: AddRmsNormDynamicQuant
   case_id: 20
   input_shape:

@@ -37,15 +37,12 @@ def cross_entropy_loss(
     Returns:
         loss: reduction='none' 时 shape 与 target 一致 (去除 C 维),否则标量
     """
-    # CANN CrossEntropyLoss supports both int32 and int64 class indices, while
-    # PyTorch's CPU reference requires hard-label targets to be Long.  Convert
-    # only the Golden's integral view: callers (and therefore the candidate
-    # operator) retain the original target dtype.  Floating soft labels must
-    # stay floating and follow PyTorch's probability-target path.
-    golden_target = target.long() if not target.is_floating_point() else target
+    # PyTorch CPU requires int64 class indices, while the operator contract also
+    # accepts int32 hard labels. The conversion is exact for class IDs.
+    target_for_torch = target.to(torch.int64) if target.dtype == torch.int32 else target
     return F.cross_entropy(
         input=input,
-        target=golden_target,
+        target=target_for_torch,
         reduction=reduction,
         ignore_index=ignore_index,
     )

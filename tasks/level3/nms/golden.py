@@ -96,10 +96,9 @@ def get_input(
     1. **合法框**:cases.csv 对 boxes 的 [x1,y1,x2,y2] 用同一 value_range **独立**取值,
        故约半数框 x1>x2 / y1>y2 —— 退化(负面积)框。golden 的 IoU 在负面积上是实现特定
        行为,**任何真实 NMS 单算子(npu_nms_v4 等)都无法复现** → 基线只能用 torch 重拼
-       golden。这里把每个框归一到 x1≤x2, y1≤y2,使 NMS 良定义、真实单算子能匹配 golden。
-    2. **去并列分数**:keep 顺序在分数并列时不确定(tie-break 在 golden 与候选间不稳定)——
-       case 15(value_range [0,0] 全并列)、case 9/13([0,1] 内 bit-identical)。仅在存在并列
-       时把分数替换为确定性互异序列。
+       golden。这里把每个框归一到 x1<x2, y1<y2,使 NMS 良定义、真实单算子能匹配 golden。
+    2. **去并列分数**:keep 顺序在分数并列时不确定(tie-break 在 golden 与候选间不稳定)。
+       常量分数或有限精度随机值都可能产生并列，仅在存在并列时把分数替换为确定性互异序列。
 
     kernel_eval 用输入名+attrs 作为关键字调用本函数，并用返回值（按 golden 签名的
     Tensor 顺序）同时替换 golden 与候选的输入，故比较公平。
@@ -107,11 +106,14 @@ def get_input(
     Returns:
         [boxes, scores]，顺序与 nms 签名的 (boxes, scores) 张量一致。
     """
-    # 1) 合法框:逐框排序 x 对、y 对 → x1≤x2, y1≤y2(对已合法的框为幂等,零扰动)。
+    # 1) 合法框:逐框排序 x 对、y 对，并以 dtype epsilon 保证严格正宽高。
     x1 = torch.minimum(boxes[:, 0], boxes[:, 2])
     x2 = torch.maximum(boxes[:, 0], boxes[:, 2])
     y1 = torch.minimum(boxes[:, 1], boxes[:, 3])
     y2 = torch.maximum(boxes[:, 1], boxes[:, 3])
+    eps = torch.finfo(boxes.dtype).eps
+    x2 = torch.maximum(x2, x1 + eps * torch.maximum(x1.abs(), torch.ones_like(x1)))
+    y2 = torch.maximum(y2, y1 + eps * torch.maximum(y1.abs(), torch.ones_like(y1)))
     boxes = torch.stack([x1, y1, x2, y2], dim=1)
 
     # 2) 去并列分数(仅在存在并列时)。

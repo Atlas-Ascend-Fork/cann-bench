@@ -22,8 +22,8 @@ Q 和 K 均分为 nope 和 rope 两部分传入，内部拼接后计算注意力
 
 语义约束:
     v 与 k_nope 在数值上完全相同 (共享同一份 latent KV cache)。
-    算子接口为兼容通用 attention API 保留独立入参；调用方需保证两者
-    一致，本 Golden 实现不做强制检查。
+    算子接口为兼容通用 attention API 保留独立入参；get_input 会将 v
+    规整为 k_nope 的副本，确保 Golden 与被测算子接收相同的合法输入。
 
 公式:
     Q = concat(Q_nope, Q_rope)   dim: d_nope + d_rope
@@ -31,6 +31,18 @@ Q 和 K 均分为 nope 和 rope 两部分传入，内部拼接后计算注意力
     V = K_nope                    dim: d_nope     (语义上等价)
     y = softmax(Q @ K^T * scaleValue) @ V
 """
+
+
+def get_input(
+    q_nope: torch.Tensor,
+    q_rope: torch.Tensor,
+    k_nope: torch.Tensor,
+    k_rope: torch.Tensor,
+    v: torch.Tensor,
+    **kwargs,
+) -> list:
+    """强制满足 MLA 共享 latent KV cache 的 v == k_nope 语义约束。"""
+    return [q_nope, q_rope, k_nope, k_rope, k_nope.clone()]
 
 
 def mla(
@@ -118,5 +130,4 @@ def mla(
     if inputLayout == "BNSD":
         out = out.permute(0, 2, 1, 3)
 
-    # 上面的 reshape/permute 链留下的是 view, 而输出契约要求 contiguous (issue #146)
-    return out.contiguous()
+    return out

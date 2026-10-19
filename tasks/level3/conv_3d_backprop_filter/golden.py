@@ -32,7 +32,7 @@ def conv_3d_backprop_filter(
         x: 输入特征图，shape为[N, C_in, D, H, W]
         grad: 输出梯度，shape为[N, C_out, D_out, H_out, W_out]
         strides: 步长，3元素 [stride_d, stride_h, stride_w]
-        pads: 填充，6元素 [D_front, D_back, H_top, H_bottom, W_left, W_right]，对称时取front/top/left
+        pads: 填充，6元素 [D_front, D_back, H_top, H_bottom, W_left, W_right]
         dilations: 膨胀率，3元素 [dilation_d, dilation_h, dilation_w]
         groups: 分组数
         filter_size: filter的shape [C_out, C_in/groups, K_d, K_h, K_w]
@@ -44,12 +44,19 @@ def conv_3d_backprop_filter(
     if filter_size is None:
         raise ValueError("filter_size is required (proto.yaml declares it as a required attr)")
 
-    # pads 是 6 元素格式，对称 padding 时取 (D_front, H_top, W_left)
-    # 即 pads[0], pads[2], pads[4]
-    padding = (pads[0], pads[2], pads[4])
     stride = (strides[0], strides[1], strides[2])
     dilation = (dilations[0], dilations[1], dilations[2])
 
-    # 使用 torch.nn.grad.conv3d_weight 计算 filter 梯度
-    y = F.grad.conv3d_weight(x, tuple(filter_size), grad, stride=stride, padding=padding, dilation=dilation, groups=groups)
+    # conv3d_weight 仅接收三元素对称 padding。先显式执行六向 padding，
+    # 再以零 padding 计算 filter 梯度，才能保留 proto 声明的非对称语义。
+    x_padded = F.pad(x, (pads[4], pads[5], pads[2], pads[3], pads[0], pads[1]))
+    y = F.grad.conv3d_weight(
+        x_padded,
+        tuple(filter_size),
+        grad,
+        stride=stride,
+        padding=(0, 0, 0),
+        dilation=dilation,
+        groups=groups,
+    )
     return y

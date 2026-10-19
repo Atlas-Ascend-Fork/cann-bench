@@ -72,6 +72,7 @@ cann_bench.apply_rotary_pos_emb(Tensor query, Tensor key, Tensor cos, Tensor sin
 - cos/sin 为 (seq_len, head_dim/2) 或 (batch_size, seq_len, head_dim/2)
 - head_dim 必须为偶数（需要分为两半进行旋转）
 - 所有输入张量的 dtype 必须一致
+- 特殊值行为（与 golden 一致）：q/k/cos/sin 中的 NaN/±Inf 经旋转乘加按 IEEE 传播（0×Inf=NaN 等组合适用）；比对按 NaN==NaN、Inf 同号匹配。
 
 ### 支持范围
 

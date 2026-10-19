@@ -74,7 +74,7 @@ class CannTaskLoader(OperatorDirMixin, TaskLoader):
         for op_dir in self._find_operator_dirs():
             proto_path = op_dir / "proto.yaml"
             try:
-                rel_path = str(op_dir.relative_to(self.bench_root))
+                rel_path = op_dir.relative_to(self.bench_root).as_posix()
                 task_spec = self.get_task(rel_path)
                 if task_spec:
                     operators.append(task_spec)
@@ -142,7 +142,7 @@ class CannTaskLoader(OperatorDirMixin, TaskLoader):
                 if data and 'operator' in data:
                     op_name = data['operator'].get('name', '')
                     if op_name.lower() == operator.lower():
-                        rel_path = str(op_dir.relative_to(self.bench_root))
+                        rel_path = op_dir.relative_to(self.bench_root).as_posix()
                         return self.get_operator(rel_path)
             except InvalidDifficulty:
                 # 同 list_tasks: 难度声明错了要报出来, 而不是让算子 "查不到".
@@ -291,7 +291,7 @@ class CannCaseLoader(OperatorDirMixin, CaseLoader):
         return {
             'total': len(cases),
             'operators': operator_counts,
-            'operator_dirs': [str(d.relative_to(self.bench_root)) for d in self._find_operator_dirs()]
+            'operator_dirs': [d.relative_to(self.bench_root).as_posix() for d in self._find_operator_dirs()]
         }
 
     # === CANN 特有方法（兼容旧接口） ===
@@ -318,7 +318,7 @@ class CannCaseLoader(OperatorDirMixin, CaseLoader):
             return []
 
         try:
-            rel_path = str(op_dir.relative_to(self.bench_root))
+            rel_path = op_dir.relative_to(self.bench_root).as_posix()
         except ValueError:
             rel_path = op_dir.name
 
@@ -401,7 +401,7 @@ class CannCaseLoader(OperatorDirMixin, CaseLoader):
             # metadata/ 的父目录就是评测集根目录（如 tasks/）
             baseline_root = self._baseline_store._baseline_dir.parent
             try:
-                baseline_rel_path = str(self.bench_root.relative_to(baseline_root))
+                baseline_rel_path = self.bench_root.relative_to(baseline_root).as_posix()
             except ValueError:
                 baseline_rel_path = op_dir_name
 
@@ -597,7 +597,7 @@ class GoldenLoader(GoldenLoaderBase):
                     op_name = data['operator'].get('name', '')
                     if op_name.lower() == operator.lower():
                         op_dir = proto_path.parent
-                        rel_path = str(op_dir.relative_to(self.bench_root))
+                        rel_path = op_dir.relative_to(self.bench_root).as_posix()
                         return self.get_golden_function(rel_path)
             except Exception as e:
                 logger.warning("Failed to parse proto.yaml at %s: %s", proto_path, e)

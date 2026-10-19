@@ -79,6 +79,7 @@ cann_bench.moe_gating_top_k_softmax(Tensor x, Tensor? finished=None, int k=1) ->
 - `finished` 为可选参数，若提供则 shape 必须为 x_shape[:-1]，dtype 必须为 bool
 - Softmax 和 TopK 均沿最后一维（dim=-1）计算
 - 当 `finished` 中某行为 True 时，该行对应的 `expert_idx` 值会被设为 `num_expert`
+- 并列（tie）行为：当 TopK 第 k 名的 softmax 值存在并列时，选取哪个 expert **不作保证**（底层 `torch.topk` 并列行为非确定）；计分按序无关方式判定——权重多重集须一致，`expert_idx` 仅验证合法性
 
 ### 支持范围
 
@@ -130,6 +131,7 @@ cann_bench.moe_gating_top_k_softmax(Tensor x, Tensor? finished=None, int k=1) ->
 
 ```python
 import torch
+import numpy as np
 
 """
 MoeGatingTopKSoftmax算子Torch Golden参考实现
@@ -158,7 +160,7 @@ def moe_gating_top_k_softmax(
     Returns:
         y: topK值，shape (..., k)
         expert_idx: topK索引（专家序号），shape (..., k)，int32
-        row_idx: 行位置索引（展平后的全局位置），shape (..., k)，int32
+        row_idx: 展平后的全局位置索引，shape (..., k)，int32
     """
     # Softmax沿最后一维
     softmax_out = torch.nn.functional.softmax(x, dim=-1)
@@ -188,18 +190,12 @@ def moe_gating_top_k_softmax(
         row_idx = row_idx.reshape(output_shape)
 
     # 处理finished参数
-    # F510: `num_expert` (== E) is an out-of-range SENTINEL marking finished
-    # tokens — downstream consumers MUST treat `expert_id == num_expert` as
-    # "skip routing", NOT as a valid expert index. `moe_finalize_routing`
-    # golden bounds-checks before `bias[expert_id, :]` to honor this contract;
-    # any non-golden consumer of `indices` must do the same.
     if finished is not None:
         num_expert = x.shape[-1]
         finished_expanded = finished.unsqueeze(-1).expand_as(indices)
         indices = torch.where(finished_expanded, num_expert, indices)
 
-    # row_idx 由 transpose 构造, 留下的是 view, 而输出契约要求 contiguous (issue #146)
-    return values, indices.to(torch.int32), row_idx.to(torch.int32).contiguous()
+    return values, indices.to(torch.int32), row_idx.to(torch.int32)
 ```
 
 ## 6. 额外信息

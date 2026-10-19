@@ -141,8 +141,8 @@ cases:
   - - 7168
     - 1536
   - - 1536
-    - 24576
-  - - 128
+    - 12288
+  - - 64
     - 128
     - 512
   - - 7168
@@ -166,13 +166,13 @@ cases:
   - bfloat16
   - bfloat16
   attrs:
-    n_heads: 128
+    n_heads: 64
     rmsnorm_epsilon_cq: 1.0e-05
     rmsnorm_epsilon_ckv: 1.0e-05
   value_range:
   - -1
   - 1
-  note: bfloat16-DSv3-B64S1-decode
+  note: bfloat16-N64-B64S1-decode | [B:n_heads-enum-64]
 - operator: MlaProlog
   case_id: 5
   input_shape:
@@ -299,8 +299,8 @@ cases:
 - operator: MlaProlog
   case_id: 8
   input_shape:
-  - - 4
-    - 4
+  - - 8
+    - 8
     - 7168
   - - 7168
     - 1536
@@ -313,11 +313,11 @@ cases:
     - 576
   - - 1536
   - - 512
-  - - 4
-    - 4
+  - - 8
+    - 8
     - 64
-  - - 4
-    - 4
+  - - 8
+    - 8
     - 64
   dtype:
   - bfloat16
@@ -334,9 +334,9 @@ cases:
     rmsnorm_epsilon_cq: 1.0e-05
     rmsnorm_epsilon_ckv: 1.0e-05
   value_range:
-  - -1
+  - 0
   - 1
-  note: bfloat16-DSv3-B4S4-prefill
+  note: bfloat16-B8S8-prefill-odd-S-asym-range | [R:S8-range01]
 - operator: MlaProlog
   case_id: 9
   input_shape:
@@ -782,33 +782,33 @@ cases:
   - bfloat16
   attrs:
     n_heads: 128
-    rmsnorm_epsilon_cq: 1.0e-06
-    rmsnorm_epsilon_ckv: 1.0e-08
+    rmsnorm_epsilon_cq: 1.0e-08
+    rmsnorm_epsilon_ckv: 0.001
   value_range:
   - -1
   - 1
-  note: bfloat16-DSv3-B1S1-different-epsilon
+  note: bfloat16-DSv3-B1S1-eps-boundary | [B:eps-min-max]
 - operator: MlaProlog
   case_id: 20
   input_shape:
-  - - 1
+  - - 32
     - 1
-    - 7168
-  - - 7168
+    - 7680
+  - - 7680
     - 1536
   - - 1536
     - 24576
   - - 128
     - 128
     - 512
-  - - 7168
+  - - 7680
     - 576
   - - 1536
   - - 512
-  - - 1
+  - - 32
     - 1
     - 64
-  - - 1
+  - - 32
     - 1
     - 64
   dtype:
@@ -826,6 +826,6 @@ cases:
     rmsnorm_epsilon_cq: 1.0e-05
     rmsnorm_epsilon_ckv: 1.0e-05
   value_range:
-  - 0
-  - 0
-  note: bfloat16-DSv3-B1S1-zero-input
+  - -1
+  - 1
+  note: bfloat16-He7680-B32S1-decode | [B:He-enum-7680]

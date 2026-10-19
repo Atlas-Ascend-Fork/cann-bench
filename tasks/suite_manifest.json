@@ -1,0 +1,767 @@
+{
+  "suite": "season2",
+  "tasks_version": "2.0.0",
+  "source_pr": "https://gitcode.com/canndev/cann-bench-dev/pull/235",
+  "source_commit": "d5f55e7318cb72660187d6a5e4ca5ac92c022b58",
+  "previous_mainline_commit": "524885b",
+  "previous_tasks_archive": "archives/season1/tasks",
+  "operator_count": 60,
+  "public_cases_per_operator": 20,
+  "public_case_id_range": [
+    1,
+    20
+  ],
+  "published_metadata_platforms": [
+    "910b2",
+    "910c",
+    "950pr",
+    "950dt"
+  ],
+  "performance_status": "pending_npu_revalidation",
+  "missing_baseline_policy": {
+    "formula": "3 * t_hw_us",
+    "meaning": "One third of theoretical performance expressed as duration; estimated, not measured.",
+    "scope": "Missing or non-positive baselines in existing supported platform records only; preserve existing positive baselines and t_hw_us.",
+    "provenance": "Each metadata file lists imputed_baseline_cases under _metadata. Unsupported or absent platform records are not synthesized."
+  },
+  "public_adjustments": [
+    "Normalize schema/golden entrypoint to the directory name for sparse_lightning_indexer_grad_kl_loss_enhance.",
+    "Normalize description difficulty labels to reviewed proto levels.",
+    "Remove hidden-case coverage descriptions and internal selection reports.",
+    "Retain explicit returned output tensors for kv_cache_append; returned buffers may alias inputs.",
+    "Project metadata to selected public records only; include submitted 950PR/950DT capped baselines and preserve their theoretical values.",
+    "Normalize aggregate_hidden CSV boolean value ranges to match YAML types.",
+    "Validate MoE indices against softmax top-k with finished sentinels, and compare deterministic row_idx outputs."
+  ],
+  "operators": [
+    {
+      "id": "exp",
+      "level": "L1",
+      "path": "tasks/level1/exp",
+      "files_sha256": {
+        "desc.md": "ac76a9d0b711934727c0e0e66a0baf6d9d022cc12fe0de1c4b54c851a141c90c",
+        "proto.yaml": "2d6a11ffcb7dcc9d5f2b2f899ffae55fd9de9750bad468c9efde20314807e981",
+        "golden.py": "3549ad7ddd315c58d6c4ab4a526ffd802c168ce61b4396a62aefc63aed1c27f3",
+        "cases.yaml": "0536888984cd8661e191da0ccbad4f481c677fd0bb787679fb6c29f29773c79c",
+        "cases.csv": "313d1cf4237b4e3172727ff54a1b8d33c65f3cf16fe05b9ed6d6d706eaf71a6a"
+      }
+    },
+    {
+      "id": "swi_glu",
+      "level": "L1",
+      "path": "tasks/level1/swi_glu",
+      "files_sha256": {
+        "desc.md": "9f7ba8bb4cd7600ecc0c0279a1947340afc76efe37adf8cde26285cfb831b840",
+        "proto.yaml": "36be240b07746e5222165afdcd8a072bc89173e7d3e8f8e7253259eca98763c4",
+        "golden.py": "3417cc27927f4e64f07b800ea06e857e03eedd08e442f3840598296658a8d8a3",
+        "cases.yaml": "f52c72d1c46606917dbd03bff4e7899548c93b37464a5a818ba9512aef64a0aa",
+        "cases.csv": "189964f4a2a050f86c016a5a326ae859d678dec42d9f592c374ecc1128a0f04f"
+      }
+    },
+    {
+      "id": "apply_rotary_pos_emb",
+      "level": "L2",
+      "path": "tasks/level2/apply_rotary_pos_emb",
+      "files_sha256": {
+        "desc.md": "d3df443161e9e08b4bdb699d9200ab2c72b3a2ed0e51318e91905383c31ac798",
+        "proto.yaml": "50cf3e8da4ebcb0036c72db5ab01fecff59a6f03144e5e672724db923995cbf0",
+        "golden.py": "1ca6534ef87e89bdbee87844866188e3d1bbb1fcd338e8ada7c0cdc4d7162f7a",
+        "cases.yaml": "40603ff6b8c4929ebeca35cb61e839bb7f678d39ae209a646693a4b971530245",
+        "cases.csv": "a6f0aa5fdc7861224311440195a822564b42bad48c3f5245b773c8c59aed668d"
+      }
+    },
+    {
+      "id": "arg_max",
+      "level": "L2",
+      "path": "tasks/level2/arg_max",
+      "files_sha256": {
+        "desc.md": "e8a40877c5bc354a3d65015d1697409d55af752cbed758e2d9fd8f96e6127db3",
+        "proto.yaml": "fdabd96afdffd859eeaf7aa53af90da9dd8f19ca804d9aeea69d3bc1f974388d",
+        "golden.py": "9401e83bc907acea64c1093e18de307ee415b04e3b4dfac4622c6586e506b00c",
+        "cases.yaml": "bfba2f3d3ac0e056c205f7430f238307fbf5ccf3e5b014252aa43795945037cf",
+        "cases.csv": "5ab85372cd082bc2121b6c5255262c4b3a178d7c2c1dbc5a579302cc1ae5ba74"
+      }
+    },
+    {
+      "id": "cross_entropy_loss",
+      "level": "L2",
+      "path": "tasks/level2/cross_entropy_loss",
+      "files_sha256": {
+        "desc.md": "2ec0e220db944b92e87b054fcf1a5117d5d4e6802ca9290bafa723a47833dc90",
+        "proto.yaml": "1255442b261b289ec6ba09d577ffdd215d1b6870519d2115e177a3f7f9c6ee67",
+        "golden.py": "4210a5aff1cc7da2f747e6cbd59c730a77ce225a51741a95ccd25cb6bd842ede",
+        "cases.yaml": "eb4d997f1ab2591fcccf216a8e69ea8067fbcbba1d72b36b291fc9566ed74a23",
+        "cases.csv": "3142e509daee0cef47f5ad4886beb0040d631b675332082c9738ecd551862f32"
+      }
+    },
+    {
+      "id": "cummin",
+      "level": "L2",
+      "path": "tasks/level2/cummin",
+      "files_sha256": {
+        "desc.md": "0145b2426e90da19894d4a600d64e7a4f90f9bc6f3c370949c7044fe39fdec7b",
+        "proto.yaml": "badbd0366ced3a58071716fd3ba0912c2974a36e401cb6cd205286a2f064a810",
+        "golden.py": "16c789abbaf63c0c626a60e0f3a2ff76c3f24d4a9f24c19c1b196e6d874049a7",
+        "cases.yaml": "563b8459d5119ea07b0250015009d4f00fd9c9d51ebb7b84fcc81628c4917631",
+        "cases.csv": "c956b3acd526daf7bb46ff03bb043ee6b3cdd6828f8387428b7395d52f9fd2c1"
+      }
+    },
+    {
+      "id": "dynamic_quant",
+      "level": "L2",
+      "path": "tasks/level2/dynamic_quant",
+      "files_sha256": {
+        "desc.md": "2280bb22eab0c1d56ed9a67fa019a285387c71c9ef5f20bfebf2504706dd73ac",
+        "proto.yaml": "1ac8956222a58732d6a277ab86477b4fe3709aaf6bad4608b103189668df4d7e",
+        "golden.py": "5a5a9a5cc2d483e14abd73c4a56047010dc59ccf67b18011b871158716e1fdfc",
+        "cases.yaml": "dfbc700ebec0c54b92ea526319102920390776f6b3a19bbacce4581e52522187",
+        "cases.csv": "53b849d30bb30e88ce081be9f676be7f4c1c118377de0e1065a8256c3b3c4b1b"
+      }
+    },
+    {
+      "id": "gather",
+      "level": "L2",
+      "path": "tasks/level2/gather",
+      "files_sha256": {
+        "desc.md": "dbb01d29e2c0089f911c245301a872f922c599080fdbf55c3265971bd72c3b73",
+        "proto.yaml": "3caccd3f92e5ce257c6883b07cb3c256e7cbed19a48478dc8d4d5a3ee7bbef7b",
+        "golden.py": "0da274cd2b668ce9728e3fab5215299a46e0c148028b55526588887b8c6f62fa",
+        "cases.yaml": "96ed210059aa0a58bd7590d0e7d128f9c85642249b6792561310b58dc3d10432",
+        "cases.csv": "417534dc3636de8d14dc5a60398b64286778d8292799ea59eba07c2a27db18ed"
+      }
+    },
+    {
+      "id": "gcd",
+      "level": "L2",
+      "path": "tasks/level2/gcd",
+      "files_sha256": {
+        "desc.md": "69a2bd83bf9de41d1de98771668c8997baa34c577b6fe3458d15623eef5d130f",
+        "proto.yaml": "32c4f9966e29975a448fe4bcfa913b1ae0897815c91baf89d2dfa33a7db0b725",
+        "golden.py": "7d1417d91378cd5d7e2cb0716e56e7d11dcc131adca4d245e4c4bc5a94daf979",
+        "cases.yaml": "8be5d7c639076c858439f81a5e55281384b0e31d79f973b78238b97088050877",
+        "cases.csv": "1409cfbbed2e7ed9cfbbd59ebab7e7a21f8dce1c1ac273b1d3610d89e1e65810"
+      }
+    },
+    {
+      "id": "grid_sampler_3d",
+      "level": "L2",
+      "path": "tasks/level2/grid_sampler_3d",
+      "files_sha256": {
+        "desc.md": "4e8f9086022609d780bc9da0cdfafecf87df104c07fed81f6ba8ec813a390978",
+        "proto.yaml": "f7c93e1f5993c3ca44fd6282d6ce442d5e2b3892c14cf81fa7874c906ad190ab",
+        "golden.py": "0937fca42db07345f0925cb1e6414857e520f508a4ccbcd6d9d82cec7275d8bc",
+        "cases.yaml": "fcafbb5acd68910267a30de4b4246341e807b8ea08de4eaf9adf9af0ec8015cc",
+        "cases.csv": "85ba968364e6809bddcccee8130cf77e3cc35c2498b95cdfcd755723b47cb07e"
+      }
+    },
+    {
+      "id": "image_resize_normalize",
+      "level": "L2",
+      "path": "tasks/level2/image_resize_normalize",
+      "files_sha256": {
+        "desc.md": "fcb6022133be86924613aed5229e0bf85240aa124e05a55a666a55f409d4a6a3",
+        "proto.yaml": "2b36e8e42271767cd618b8b57baba4d4dba0b237fcdb67a43cc207b5541d56e7",
+        "golden.py": "35c8e030ea27e38ebba0c1b4f7330fa0f86e85705c7a2faa6550f5e6bded65b8",
+        "cases.yaml": "f64ee4a65674b21cb2f83112518ae3ad99860559df1d56cbeaa4c744a34eca80",
+        "cases.csv": "b26e9a8a4b0f41bf6fb0f6c5a7252392204693195925d5e184cbca8d02342727"
+      }
+    },
+    {
+      "id": "rms_norm",
+      "level": "L2",
+      "path": "tasks/level2/rms_norm",
+      "files_sha256": {
+        "desc.md": "b4abf37fe30fe136d9988d7e2d8a49a839d2a1cf74f6e17ac39dce9b594e8c9c",
+        "proto.yaml": "cb41831dc3b233170b2ee733d958789918dabcedc8113f7f154f6a56e0f85cc2",
+        "golden.py": "b94b1eb9d0606b1e1bfbe52ef758fd9a15618516619c4ce901e2325e33119860",
+        "cases.yaml": "ed5620089d2f1365c5aceb0341441506db533b71e017e03906d94efbb5b5e9c4",
+        "cases.csv": "996608ff9322e020b1330dd96c842d40320106cda19e8f1bfe7441fb39b1e9b8"
+      }
+    },
+    {
+      "id": "scatter",
+      "level": "L2",
+      "path": "tasks/level2/scatter",
+      "files_sha256": {
+        "desc.md": "54ab7bc6bf70ffcdf3b21a348782317a13046de2b74633faa70e453b293db220",
+        "proto.yaml": "af3c1b03210eea811dda05c8032f55e2678eea4ae0883dc6b5af3cb10deb4d70",
+        "golden.py": "b94be53f66a0d31d08def4e0ea5dac472c6c3bc6b4e1cd21adc60851659e269a",
+        "cases.yaml": "f27ff9fdbcb5999736a21be84b3c646a5424ee19a4ac2652917aa7f4271167fb",
+        "cases.csv": "a6adf3c4fd2169fd9df9b67da8a9e17d7abe32fa80421bb5452788efc637e92d"
+      }
+    },
+    {
+      "id": "softmax",
+      "level": "L2",
+      "path": "tasks/level2/softmax",
+      "files_sha256": {
+        "desc.md": "5f3897802b73a81119ee79ba80c345748314b981be2f5429c7179c3240ff1fb3",
+        "proto.yaml": "32d1a2fdd5be8c4c5e21fc6fdc000bc4ecc8b97c2209d23e10aceb6116768ab6",
+        "golden.py": "0e45afe95f5548d9fd8c14d1f99c7db734413458d720356a0fd646636f290966",
+        "cases.yaml": "3100c3f8bd66944d2f1c844ca5dd0245ba6150809789d458d58f5a2ec77cb042",
+        "cases.csv": "dc253b8b5be03bbae9d52218db9e83ed3b0ef4853444794ed9d7d5b3a2415962"
+      }
+    },
+    {
+      "id": "unsorted_segment_sum",
+      "level": "L2",
+      "path": "tasks/level2/unsorted_segment_sum",
+      "files_sha256": {
+        "desc.md": "c71ec2ade6efc4709217e84b5fd767d5475dc1abf640ba2b8ec7201bc964872d",
+        "proto.yaml": "5a1987a7d2059fcfbbd9044f6e88e35ad4b8e16e10a6750d82d0533120b6ff65",
+        "golden.py": "2da8ddf8359b687210c2117639bf97aecae32f2bdd81acba4a7a0248c69f5601",
+        "cases.yaml": "79e9e7c2237386ff27ec4a4851dfbda7394f30e078eca07a74010a6966d02952",
+        "cases.csv": "4faa38df98a24e270bc18c7db40c983e0e619f7af9edd111e67b5e6c35240352"
+      }
+    },
+    {
+      "id": "add_rms_norm_dynamic_quant",
+      "level": "L3",
+      "path": "tasks/level3/add_rms_norm_dynamic_quant",
+      "files_sha256": {
+        "desc.md": "87d480de23a72797abecb75df28ce6631a65ece866f80199efe2a291259c2d22",
+        "proto.yaml": "4dd498fafd888bd78263f7477694189f8713d201bce80a96c77e6f3d63176ae9",
+        "golden.py": "649bc520120ebfe53e71070efe7e0501b30b637bef2c9337d327710cb06718b8",
+        "cases.yaml": "e608330642c565de0c242d72b14a8f5240480e8372d9b50d394906bcd77e1f43",
+        "cases.csv": "4237dd52144d0dafece871322be34620661cd24792467355407137f527cf55cb"
+      }
+    },
+    {
+      "id": "aggregate_hidden",
+      "level": "L3",
+      "path": "tasks/level3/aggregate_hidden",
+      "files_sha256": {
+        "desc.md": "e03f69be383614b24993821a536f2884305311774eaae9ee7c025874b214cc96",
+        "proto.yaml": "450f0af554084204a624648be2970664a4093c5a0de62a126e8a2dd1d95e0c4f",
+        "golden.py": "987ada83d5a630911fbc3ce663820d208abaf446cb8bab75cb2f975375844b94",
+        "cases.yaml": "d88836b83ba30c7a88c00ad1e239732511f689700075095d80ddacf5e028742b",
+        "cases.csv": "2cd237c6c4c5695b333b9514774571ca34c7188862828f9cbb4c4e95ee74afe2"
+      }
+    },
+    {
+      "id": "aggregate_hidden_grad",
+      "level": "L3",
+      "path": "tasks/level3/aggregate_hidden_grad",
+      "files_sha256": {
+        "desc.md": "3c012ca5303643d1039ec8d5f7c4835bfcf0efdd94033c01ad2a183d3d02a022",
+        "proto.yaml": "8594222a16e328bb133a2b4add47636f880f48b48906b7161725e0d878532a7d",
+        "golden.py": "ce706f1b97c8f1689c3180b16a812b00977d912d129ce24ef18203c378faf437",
+        "cases.yaml": "53ca2715e738dd4c59daf522e7fc174f2400faaa6390050c6af0fc4a0502bfbd",
+        "cases.csv": "515c25df7e29e227dba83513430d2c6043ccf35b1ed2bf9efe20ec2c02c7da7d"
+      }
+    },
+    {
+      "id": "categorical_embedding_bag",
+      "level": "L3",
+      "path": "tasks/level3/categorical_embedding_bag",
+      "files_sha256": {
+        "desc.md": "4a4124a5fdd4ccce2cdb2b3a6357ed9cc622d5c7a85bfe3e5b178defb7c385ae",
+        "proto.yaml": "946c313c701c7ac8d850d180a827222c5b3de2cf2a887845f750771b9aa60b0e",
+        "golden.py": "2bd260a699238a3b26245ee11bec2ad64bf6e637f1774a25c6b7c4ac986ff940",
+        "cases.yaml": "77b82ee0b3462ee87ec5859e59dc3bb2168623821ff29e172cf127ae2911407e",
+        "cases.csv": "1845e0b4c6a78915b36427ef94a23226e766a6a4bfdb0d1c245b513cb0f440cf"
+      }
+    },
+    {
+      "id": "conv_2d",
+      "level": "L3",
+      "path": "tasks/level3/conv_2d",
+      "files_sha256": {
+        "desc.md": "4ec920a357b10b63ebc83fc35ca8682f97520112e172a9b2ade43a5ac9cbc701",
+        "proto.yaml": "014b97bc4ebb6d0ba3f8178f5fe177318139d4efe9f99d97c149fe996f2daf91",
+        "golden.py": "56aa95935236ac54188cf3276b9866286afe9d44d31b5fbb3e4be46dd08f6266",
+        "cases.yaml": "d6d3e13153b303b006acd2508a7ae1bf58a2b61c7e0fbd299ebbbe7409ae5985",
+        "cases.csv": "4b67f418307bffdbe96ae9e6adb9c86d198673f45ae83e7a4ceb1734ac3b65e8"
+      }
+    },
+    {
+      "id": "conv_3d_backprop_filter",
+      "level": "L3",
+      "path": "tasks/level3/conv_3d_backprop_filter",
+      "files_sha256": {
+        "desc.md": "55b63e3eb50a47244a2e6fe28175e9057d9b79546dc633c0070df8e112d981dc",
+        "proto.yaml": "f29fa6e7fe24b519223261093d602bfd634318584d943afac9f813bbec3c3c4c",
+        "golden.py": "e0198ca577a8b86b0c896b65990329fe0d20c1c92f982460d73f1e7f6d0b1673",
+        "cases.yaml": "7119b24a9d05a65f1b183236b326892e26ae1f65434d387673706e2fcacf180f",
+        "cases.csv": "032ede09f372cdc64fe8ea843878522845abece387f89a9a112ff07f2e5c63e6"
+      }
+    },
+    {
+      "id": "depthwise_conv_2d",
+      "level": "L3",
+      "path": "tasks/level3/depthwise_conv_2d",
+      "files_sha256": {
+        "desc.md": "7d3cebdb50f8b3b4cee8109d84190d9d300f427e07793eb403681d003e735b95",
+        "proto.yaml": "3288ce27d54e5740b1b631cee7b43817fcfa7cd313226ddd5c88bb6c343eb105",
+        "golden.py": "8f51581e508ad524815bc9f6dc8777e173efe52386d7ce5165bfa2a284ac9719",
+        "cases.yaml": "ae4187b78d77dc8b4469e0d306578227747fa50fa649a744490a60acb1f2f277",
+        "cases.csv": "bd4536c108e43ea34e89acf9c72f36647b2920519db2219c19ab5e16103899fc"
+      }
+    },
+    {
+      "id": "dequant_swiglu_quant",
+      "level": "L3",
+      "path": "tasks/level3/dequant_swiglu_quant",
+      "files_sha256": {
+        "desc.md": "3453e79fd2aa199b325df3f6f298d3481e25f63f50d7639598d2e05f102a83e0",
+        "proto.yaml": "19ad0ff08c824539d18df19ee1688b32d34dc03255ddb16edd69a3b97f5bd4ef",
+        "golden.py": "68dd2a3790e1d130d294a9b9c03e85b8ed94cdbcfc2d9e549521fb4b67cde889",
+        "cases.yaml": "771613486c3efa9b2e4069290a1dceec0e25f998f60b7b64761a597832d3778c",
+        "cases.csv": "433ad12e6215350803065805174c55b083ec4d81f17466ad493022bea24c519f"
+      }
+    },
+    {
+      "id": "dilation_2d",
+      "level": "L3",
+      "path": "tasks/level3/dilation_2d",
+      "files_sha256": {
+        "desc.md": "9ed60cf2b2627dfc8f719468056b7753ac67c10809eecf95971842abe5e672ef",
+        "proto.yaml": "aa143f52cf94362a5792ab097886de337dfe1d0592afab60a4e7fc2a02926884",
+        "golden.py": "ef6894d9d9717d352da301a3842eda37078c5c0a6ee8c86f67ff98524136c46b",
+        "cases.yaml": "7bab74b725cb63c1693c23cf01677a8cd8cb5fe4d320c4633e51d699a4ce78b1",
+        "cases.csv": "1abdc6a5efbba698666ac7ee92fde23dee363e5c4eadb64591c70dc7b69ff3cc"
+      }
+    },
+    {
+      "id": "embedding_hash_table_lookup_or_insert",
+      "level": "L3",
+      "path": "tasks/level3/embedding_hash_table_lookup_or_insert",
+      "files_sha256": {
+        "desc.md": "312fb02e63c208ace987607108de99b1d319ba3b0fef041ced170b9bd73df891",
+        "proto.yaml": "aa9cbcd4a42b26edd0960ae38c59f47ff284ebd56b01120507c6cc2db899a206",
+        "golden.py": "54a5473509b2be070507113a3d4decd313d642fed3f7d879f326d59537d2a512",
+        "cases.yaml": "4e4be5947f81868f87d52a69e19c928b212588f21fa16737cc4a1b278fd70348",
+        "cases.csv": "dc3fbc0335ae7339a4cdc9a3f53d6127657b2d2b1688f386e48d1a2ff7d9c5ac"
+      }
+    },
+    {
+      "id": "engram_gate_fusion",
+      "level": "L3",
+      "path": "tasks/level3/engram_gate_fusion",
+      "files_sha256": {
+        "desc.md": "b3def50c4e88a0ef0a0cbe773eb7ac79969109b5d9add33e5a6cd909d78413ac",
+        "proto.yaml": "92962eba12c0214d3c7e7ad8b22fe6f847712b04f641af535e80df6e774da96a",
+        "golden.py": "f9052793360d02f999d8ef63334cc3e6ff327ba6f54a3210abc313d82122d5f5",
+        "cases.yaml": "5012f2f37b06d6e5115a8d92be4f19ff350708d33d22072c327cc42aaafaf1a2",
+        "cases.csv": "c78edbbce7927e5f36aeb73f4dd7abb434166a272aad51ee57bda7e05e34936f"
+      }
+    },
+    {
+      "id": "grouped_matmul",
+      "level": "L3",
+      "path": "tasks/level3/grouped_matmul",
+      "files_sha256": {
+        "desc.md": "fbd3fc5463d9f2245c25c2bcd342b888e8c07ff13fa77f72496cfee8ba05400e",
+        "proto.yaml": "268bcf8612708803f8256e529fd51a48933caad7a7bb3c17ac7c5ee89785486e",
+        "golden.py": "ed0aa7bc3c06b56e6efd902fbb7311871e92bcfc4e493debd3166a3063d9c1ff",
+        "cases.yaml": "4fa4e84ce3a9d9e6c6debb80b16a8fc985c27809e21d7dbc9760e18b474b323f",
+        "cases.csv": "8c7873343a2ee6cd35f6a62e6755030feb7e2141badfa2c1e1020016b450f22e"
+      }
+    },
+    {
+      "id": "kv_cache_append",
+      "level": "L3",
+      "path": "tasks/level3/kv_cache_append",
+      "files_sha256": {
+        "desc.md": "765cb77affa4a7d559695bcc5569430dcc907a8aab7ded71e51f523cdd685865",
+        "proto.yaml": "1e5ff71230c9b612b6d3c4eb0da5f73dc4307e5c3b872e4c0714bcf065792322",
+        "golden.py": "2cb8a97ee7742bbad08de82866112a4c813375ff875d7f30e00450fca50d8db8",
+        "cases.yaml": "cdf20125679311acb65bfc782544785ed5f866c2a7eee40c1fe5fd7fca540af7",
+        "cases.csv": "16fad9ca4b7bb6ce4a097d87ff75ccc7245614525548ce55dd231a487cbe4656"
+      }
+    },
+    {
+      "id": "mhc_post_grad",
+      "level": "L3",
+      "path": "tasks/level3/mhc_post_grad",
+      "files_sha256": {
+        "desc.md": "416ac79d95604cd8ee0cd212f9c04f71dc63624e3ad6eb4f65d053ccfdc3f485",
+        "proto.yaml": "d68ab342b748245244b709554dfe67c1dee4239476c1208acde9c9d772659520",
+        "golden.py": "95db1d0ae99738af3bb6569b0fa3a2dff1ba3cf838e6d6e017060e7e7b871dbc",
+        "cases.yaml": "67ff2704ab190b4f6924c6d5e93a02f099c7fb9f7b38c180b05ff5e0d57e918c",
+        "cases.csv": "f68473596ba4a9fe76d23c1a80107f67f8452a1f09418c43b562273081df490e"
+      }
+    },
+    {
+      "id": "mhc_sinkhorn",
+      "level": "L3",
+      "path": "tasks/level3/mhc_sinkhorn",
+      "files_sha256": {
+        "desc.md": "5c54eebec4955cbbab460d67bf1eea855d7761003d1592c513b25701516242ea",
+        "proto.yaml": "d0e42862faf598ba06c1f0b6718403e77aecfd8dc5c7644fc7bb66f76cac5b42",
+        "golden.py": "2d55c7558abec65ec4d798fdc09b94e353f432c4134f4552dda29b21e867279a",
+        "cases.yaml": "193a67a3e1e7a0de84d325591fe42d110e60de5c0ec5e42ab2fa818a8f300a5b",
+        "cases.csv": "89a16017e09a78f6f58da15d427417cef3680b6f923c96bd9af93bae4853e322"
+      }
+    },
+    {
+      "id": "moe_gating_top_k_softmax",
+      "level": "L3",
+      "path": "tasks/level3/moe_gating_top_k_softmax",
+      "files_sha256": {
+        "desc.md": "00b9109ae1c2a3216d35b270d1baeac15c063e49b3d5f5b1deef8be0117d43a4",
+        "proto.yaml": "c74cca2e1290b7ae7b5365a40e27c0db29ff0d70b1eb97f1aa1ca0e7cefc67f9",
+        "golden.py": "0f89417b85b2499d44132149b0c0f727d827f6ebbbdebe6a26860e9728c5a792",
+        "cases.yaml": "4b8b60e4d9ed9d13aebaf873cff79d5c763aada37ee92b96ea43b3203d5253bf",
+        "cases.csv": "304bc277980bc271a2c914055e6e16f84024014c305f05a44ceae3d53e79008f"
+      }
+    },
+    {
+      "id": "moe_re_routing",
+      "level": "L3",
+      "path": "tasks/level3/moe_re_routing",
+      "files_sha256": {
+        "desc.md": "1134a0465b986503d95fe7d7199c25268ef07cdcb75d2cea6e85658bb58ddf2e",
+        "proto.yaml": "d1583c7192c886165a071d2e95a7f35146212b037bff2e5a86ee10596ae31b25",
+        "golden.py": "f42c5b22e63ee4c627e7962ae40e8e219e4d80567d84db45a96d77680b18eccc",
+        "cases.yaml": "0d70595247152dba723f5e6291292b09a6f8a39ac578ac7a7c9886b2f286a6ed",
+        "cases.csv": "04fa8698524152826dad5b4fab3143c664237c78fc2147d5d6fab43805fd1e65"
+      }
+    },
+    {
+      "id": "nms",
+      "level": "L3",
+      "path": "tasks/level3/nms",
+      "files_sha256": {
+        "desc.md": "afa89d88f360146f2ec406d68e970ddb130c34c6a0b06c249b57548a933d9af9",
+        "proto.yaml": "f2128a130ced30b2f397bec7cd02f8e5a11cb2f29226f5b5d42b91ac55d6e5a9",
+        "golden.py": "a26f5873f32bf76eba50201694fb02caee51771b93aa128b937d0fe9be2dccae",
+        "cases.yaml": "5d7894bda176ad1a4c5057ff46ffad16d6d12575d0f66aa839f97ac081afd8c4",
+        "cases.csv": "f5a2c531bf59f2094283cc244c44acf149a3c01207b944a0c8e0e5e0b569c829"
+      }
+    },
+    {
+      "id": "q4_0_dequant_matmul",
+      "level": "L3",
+      "path": "tasks/level3/q4_0_dequant_matmul",
+      "files_sha256": {
+        "desc.md": "841942a4c4c07d05d327bcbb0ee978793c25a947417ca017239c590a07068ce0",
+        "proto.yaml": "c2bb114de230afe5fd5bb9e5ccabe49cba633eed3908f097507de6838b504222",
+        "golden.py": "8d18496188a1c64938ccc454d2092f081d75767f3fbd6c4decd9c228abbb3863",
+        "cases.yaml": "a5f9260e1380097daef415c8a0ea9619b19c79438b377f9fe4b788ab1b6fc815",
+        "cases.csv": "54968375dfe9744f5306ef2a5641d92b62278de2fd9c6edc82c9f026a32f9f35"
+      }
+    },
+    {
+      "id": "quant_matmul",
+      "level": "L3",
+      "path": "tasks/level3/quant_matmul",
+      "files_sha256": {
+        "desc.md": "6ebd8c20c9222efd9a4319aab04081f0177d47b144afc9bdf917e5ee4956c2fc",
+        "proto.yaml": "5f59f99899a3f5b897aa90af4958982a715a2842aa2810dc5f901dc2b93d0086",
+        "golden.py": "1750d0c308f2a1c9edc86a2eb6591a523f8dc501c35130723b4bf98f4a8941a2",
+        "cases.yaml": "7e5f9e68ee05497bc0170f2cd8a2588fe2edcde241d969c6f10c9ad7069a9bd3",
+        "cases.csv": "63ef79c3b0f4e11aeaeb198100edba899b07c1de18b4b81501e5168ae6b69987"
+      }
+    },
+    {
+      "id": "roi_align",
+      "level": "L3",
+      "path": "tasks/level3/roi_align",
+      "files_sha256": {
+        "desc.md": "fdf32cc162fe39a2d2945fc6f378d83d0e78ba57688dbf705f93919f8ed3472b",
+        "proto.yaml": "5850828024c937fa2a26d6f8a23af8178aaf06afe5a8a70c99e36195febf88e7",
+        "golden.py": "d343cb6a08c0be4be06667c89b99c53180edf105cf5d99e960bf807b9be45b23",
+        "cases.yaml": "e5c928d7bfd8dde63f0f5c3258f1f2b2ed0391b85db144486ed8821907600f25",
+        "cases.csv": "974793dc17328c498f28c1e8b8a2b31de3aea9c0bd9dc0fedb0262e548704478"
+      }
+    },
+    {
+      "id": "scatter_block_update",
+      "level": "L3",
+      "path": "tasks/level3/scatter_block_update",
+      "files_sha256": {
+        "desc.md": "6e585b494ed816287dabbe76ebce4ef3e987ce1e62f66dc78fab4b8695fc6a9b",
+        "proto.yaml": "6267639d4737ee3fadf40f76bb731e05ce1ff70a876dd48660ff12b5bea65548",
+        "golden.py": "19a060aeb74233e9012db60ece3f1f3b5995b4efffe0d84c16fab4eebb0bc475",
+        "cases.yaml": "2385c613f3433e25f237151fd636ed24a353a4e44f57d1f0e1e5beb989d9cb84",
+        "cases.csv": "ce4e9239eb4fcf466c4f741f6d10172b1059ad6907f92afab9a51bfe1057d227"
+      }
+    },
+    {
+      "id": "strided_slice",
+      "level": "L3",
+      "path": "tasks/level3/strided_slice",
+      "files_sha256": {
+        "desc.md": "6f6b98fb862ee66a210275dfdba997b3e26c6f8bc02bd01ac20abf78b09a559f",
+        "proto.yaml": "80c3d9e80f7ce08e739c1f645e0dcd8865b643919102c5d67a9e52713295978d",
+        "golden.py": "3dd3a8fccfe406781e585217539e5ed1d1ee81e8ec52a7cd3794133d4475faf4",
+        "cases.yaml": "49e658e8d372cb82d840ac2f055262906ba870eab7c4c4e9b88904a33bd2d038",
+        "cases.csv": "6ee336690174f18f4e5f02c3194f319cf4f650a6d44c925775fd692ace0f048b"
+      }
+    },
+    {
+      "id": "top_k",
+      "level": "L3",
+      "path": "tasks/level3/top_k",
+      "files_sha256": {
+        "desc.md": "ec87c00f9ba9200af0c0d70c2233c0d4395ef09f060956184f52140454c218fd",
+        "proto.yaml": "6c4db8e21b2544b81f86c878f81cb680da8b5b4914776f4059d59130cc46067e",
+        "golden.py": "b11027424ed6d72c68692bced4d4578d2340f859b3b5994cba46fde8e72d77ba",
+        "cases.yaml": "a3697f298c01953570dc1ae4a495a3647d1bca9a8ed38a4583a60915fdddbdaf",
+        "cases.csv": "437cc65198603390c17e6dc06d2da9d86f9477d4edbb290503d9654c9d660a0f"
+      }
+    },
+    {
+      "id": "transpose",
+      "level": "L3",
+      "path": "tasks/level3/transpose",
+      "files_sha256": {
+        "desc.md": "f4cc09863f3a2bc00ba291a80dcd7128ff51d0478d8073085e26597e7eff2c7b",
+        "proto.yaml": "9b68ff9495226d15e6e1211abe1ac7ceeafa8c829b771aa312b5ef27ffa7c6b0",
+        "golden.py": "7b1b14852f3bb6d4b632d36e3d1643e4d21712c0c00cac0149262cb424743754",
+        "cases.yaml": "3d8dae1a8ec1ac46033acc44ffa01437dbcd0223b4f825aa014b97f5717fcc84",
+        "cases.csv": "662aa35038d7257d33c450beb596fa9c96156f621f5254cc4be23f100a4319fb"
+      }
+    },
+    {
+      "id": "unique",
+      "level": "L3",
+      "path": "tasks/level3/unique",
+      "files_sha256": {
+        "desc.md": "ab81d4c5d89d9afba1d2272f04023971af53ca03f7085a3c1288518955228bf5",
+        "proto.yaml": "1a0e53939fa221c885691f6830089e678a74be938b14b96293e7f20d2bc51274",
+        "golden.py": "1bcb0b9f1f8293687d985bd2175ceb8eeb11ab1d15d00ae8e5e8d0f4808c6633",
+        "cases.yaml": "f887e7bb32d08d78757788e6aca5daade3404f97fefdcb1d89a60bb63b08b695",
+        "cases.csv": "024c83db1950d148d6d6bf8716cf771ab1c0bb1611f4972ca7980a8c02544d6a"
+      }
+    },
+    {
+      "id": "weight_quant_batch_matmul",
+      "level": "L3",
+      "path": "tasks/level3/weight_quant_batch_matmul",
+      "files_sha256": {
+        "desc.md": "67f4ceebdab42e518fc955cdf8474a35dec362e689e83afd72144eeab7f04c86",
+        "proto.yaml": "3d93019962091dacf018e0484ed5ef451cd9e943a648e944f84d4d85c4027ce6",
+        "golden.py": "d4aeae6d6ea0bcb4b7390a33dd7d03c7b58d2de0f13260e194e020e97cc65657",
+        "cases.yaml": "ac0c47b39a5ecaf443010c2b4dad36e74d7e51a8e00a4473e8bade51fd175663",
+        "cases.csv": "6a757b40cb1de9243526358901187393ccf70293f34583354b30e3f13422eca6"
+      }
+    },
+    {
+      "id": "attention_residual",
+      "level": "L4",
+      "path": "tasks/level4/attention_residual",
+      "files_sha256": {
+        "desc.md": "5eb025defbff0498d7f41f23e967080eae022dbb8adffd969aaf35c6a61c1c25",
+        "proto.yaml": "2d85e237072501be7205cf85c82739d4b1be17a37c74fe80acf1f857db19aa73",
+        "golden.py": "cf90b8476c4fabbc5be348baf48b44c0ce63ff44798f5479100232762217795a",
+        "cases.yaml": "d6d35f240ab979fce0f7e8ae35c27ab1fd6bb00213d0bcbd65e9ce28dcc16792",
+        "cases.csv": "eddae5a97b9d08986f76899bbfe88dfdac501b5481ebff50bfd40fbaae5d5b8a"
+      }
+    },
+    {
+      "id": "dynamic_mx_quant",
+      "level": "L4",
+      "path": "tasks/level4/dynamic_mx_quant",
+      "files_sha256": {
+        "desc.md": "3566f2ba6552d911288acb09224be2444a2d14657f3a0a3f45500c975ad36331",
+        "proto.yaml": "16abb5cd9068dec095934366662824053a4d13bdf9892d7fba97a5fc5407ead6",
+        "golden.py": "7fbc6665d57a97043e95e3e775c55297a28363ba69c410451fe22bd473d72429",
+        "cases.yaml": "1e4b336d406bce01186dc8fe8a693b2cb7696ee949efae2dbb521249b1fb49d5",
+        "cases.csv": "5999ad16f4e32ed99c974faa03d866b2effaa85291ccea5d2bc210052ee1b468"
+      }
+    },
+    {
+      "id": "fft_conv",
+      "level": "L4",
+      "path": "tasks/level4/fft_conv",
+      "files_sha256": {
+        "desc.md": "4bc1e141463cba4c90b5f7312dbf2128da32357b0da3933d2ad9392178ab9513",
+        "proto.yaml": "96bc88546e7d61023a71f263651ff0a591b386b8441d3e90cc6b132059ab58e7",
+        "golden.py": "6e722a5163b31ceee9988e4b76717c29ed9e1da9f075937acd7678bec71abb25",
+        "cases.yaml": "a634606c8377dc0fe8551218a657303c67df906417e022275ee54586e073810f",
+        "cases.csv": "ac34519e7630ac93a61ca61f665c403188c45d58b1add0c803cd3223552e247f"
+      }
+    },
+    {
+      "id": "flash_attention_score_grad_enhance",
+      "level": "L4",
+      "path": "tasks/level4/flash_attention_score_grad_enhance",
+      "files_sha256": {
+        "desc.md": "eb1713bf74007b7575d72461ac48d912614cc622296da1587d9511501759b062",
+        "proto.yaml": "0dcb5c45267ac85bd65dcbd0e3fa7e52e079638095c6ca12dd0f90e376ae46b8",
+        "golden.py": "7a846f549a23cb6f49ede315ea13332792e5c3f4b3987e723471a364255f5e39",
+        "cases.yaml": "d61f8f55bd50bc48129be00d61267b1a550d9c8f09b55b03c6bf4911c82f8b63",
+        "cases.csv": "25c6cb9daef9e21768bb80eee85b01f741f02392a055ed51fc11be58189cd643"
+      }
+    },
+    {
+      "id": "fused_causal_conv1d",
+      "level": "L4",
+      "path": "tasks/level4/fused_causal_conv1d",
+      "files_sha256": {
+        "desc.md": "4fe7b85b12c0374494429fd73ee56e50caad4915c323762164f0d6075a6ceb2b",
+        "proto.yaml": "6660f0f848e80f1106c14678a0a2c8d02544b4331a31c700d5be90a7f52991bb",
+        "golden.py": "705be0fc7305e896e95105887d9b3e42151a058cf3ff344a05fe6ec67471c81c",
+        "cases.yaml": "76729f2883992b8f599921d41b199053710836badfb83acf493db3ef59d7ea66",
+        "cases.csv": "1d1721b53b984ce02a1f096a9217364d3bbbbed94c2936e0fce2b47553daeda4"
+      }
+    },
+    {
+      "id": "gqa",
+      "level": "L4",
+      "path": "tasks/level4/gqa",
+      "files_sha256": {
+        "desc.md": "8b94349587799c9074cd8f7bb38e960be2e0973c4617c70d60b5019971bf24ac",
+        "proto.yaml": "0f6831b9a9aa0d5c7749dfb6d0fb61ce99eaca16c5eee7f54a48721829b548ab",
+        "golden.py": "802d5450ae8d145f3d27f1d33820fc7a10f3cd609f01af4687eb2f67908a9d6d",
+        "cases.yaml": "1f6a4e1a2fb3c2484295852781f58ed63511d4068de7ce386116dc4184220e0d",
+        "cases.csv": "1da2e8cf8c8e19b8047fcde91d4ea56250dd6f2a19be329f05170c31dccfee35"
+      }
+    },
+    {
+      "id": "grouped_matmul_swiglu_quant",
+      "level": "L4",
+      "path": "tasks/level4/grouped_matmul_swiglu_quant",
+      "files_sha256": {
+        "desc.md": "6ff71685c4c6dd901bb71c118621b42e95d246607975f3b261c27d0503283115",
+        "proto.yaml": "03cd44586e78cfc96b3457cc6e718fb46768ca7f16791023674652ca72952029",
+        "golden.py": "0ec894dcb04fb07b71e9fa6b08ae975c2082553ead8fbefc780c1fffea0996e3",
+        "cases.yaml": "84cc013761c172bd62960f8b5c814840dc0c08b6408820bd43284c91266a439c",
+        "cases.csv": "b8a3f78f247e98b82302e8f9d932c6cee42415829f9f1b94676a1500bf2b8da2"
+      }
+    },
+    {
+      "id": "linear_cross_entropy",
+      "level": "L4",
+      "path": "tasks/level4/linear_cross_entropy",
+      "files_sha256": {
+        "desc.md": "0c2d397917f67422ad06129b6bc978896d426581d117c557356275bbd070c1c7",
+        "proto.yaml": "b0a27c2204726c0b7f9d3e7c01412f33d320f05e41bede209f644c24f1ff7d5a",
+        "golden.py": "036ef8854e675f1441ff5bd8e88b77d5e8889627559e7b51b58a4c05838ef237",
+        "cases.yaml": "661bb9c29cf100405696998250793d40c4145003b438fea008000d60cd3b34c8",
+        "cases.csv": "905f7351e83a86fd8e3101cf3a070d2b1b2db52c52405028aa165e6b08f97af0"
+      }
+    },
+    {
+      "id": "lstm",
+      "level": "L4",
+      "path": "tasks/level4/lstm",
+      "files_sha256": {
+        "desc.md": "de74a200dc9e56a32b0f8fa7f82afa94a2b030507fc44226a61ea6aa5188e904",
+        "proto.yaml": "2247281b063725b5b1d24cb2b87b1cef2618a25f06db1cc41865ea2e113f375f",
+        "golden.py": "909434597ffd91708a7316017eaa1203ca0e6f72babb3dcc717409b2c05ab0b2",
+        "cases.yaml": "d79c03ce5fafd6e4ecf41d15213be81b5e79a3af287433786572da34cfc6e357",
+        "cases.csv": "db59acff5e68c81b11045ec1d8df1535f4554d4c57c485a62257ec27d54dac7b"
+      }
+    },
+    {
+      "id": "mla",
+      "level": "L4",
+      "path": "tasks/level4/mla",
+      "files_sha256": {
+        "desc.md": "433b8eaff3231700cb2fe0ecbba8cc91cb2ae65902517d1a4aa66daf48d10362",
+        "proto.yaml": "70cd11633ebad052058cc33606f4fa4e004fc1e9b2a9251a73f28a697a1910f4",
+        "golden.py": "3996ec1a4bcf142db4f311dd72510d0420269691e1efccbd72a00e53a2bc8cdc",
+        "cases.yaml": "57e742e5f14680996c348cdfcb462852e64750066b4d4f4c852c4403dfbdf46d",
+        "cases.csv": "85648d43619c1a38c5730231baa20308dc5166c76d3cbbb8fe0f53ab7d2045a8"
+      }
+    },
+    {
+      "id": "mla_prolog",
+      "level": "L4",
+      "path": "tasks/level4/mla_prolog",
+      "files_sha256": {
+        "desc.md": "95ad391315f4b11ab1a761cbe8eb186943657f0c98dd1b5c15fb0e1a86b01c7f",
+        "proto.yaml": "c8828221bb9a56ae25e674b3a7d4ad358c06c376a48649bb1fe60efbe3787d27",
+        "golden.py": "6e31b91abb937b2ca08ce81273891fa2a8343ba10174395c3dbcdd3e0714103c",
+        "cases.yaml": "04f5733840d0a45164ff4c77ee49bcf37ecc502e79816f86b769439c9c7c067e",
+        "cases.csv": "76d8ef9d7b916467042dff019302b39e14fe88aed11d90c9cfb4a9e8c5fb928f"
+      }
+    },
+    {
+      "id": "selective_scan",
+      "level": "L4",
+      "path": "tasks/level4/selective_scan",
+      "files_sha256": {
+        "desc.md": "9c33f9477d910d01e9ac740007e6d2f8ea027751a2d3d318e5d7b839de10bd81",
+        "proto.yaml": "cbaa6850efda49c9849b68416372d631059ecd33e8c5556bb0e07082126fc087",
+        "golden.py": "8a87bd09219115088f43bb23f639d1eb685a47c4889dfd57a55f78c853f3057d",
+        "cases.yaml": "a2dc7005c276fa9ce4b6adeedea6660d24b4244a73519d8d3f3e9c59e453ef4e",
+        "cases.csv": "6d9c1b83d6ca9f752100256e541d52a89910ad58d096bcc268dbcc62bcc7dd59"
+      }
+    },
+    {
+      "id": "sparse_flash_attention",
+      "level": "L4",
+      "path": "tasks/level4/sparse_flash_attention",
+      "files_sha256": {
+        "desc.md": "f4bb46f7149093b414fb48e07e3c2252866298c6d055531c7e059465da8403aa",
+        "proto.yaml": "92909703e38697ac1a7f7df16eea412358f9e4721e045a8cac12f211a78e8ee9",
+        "golden.py": "681e561102a6be46ac4264d48d5545b6309982b39ed4088cbf566aaf38f749e9",
+        "cases.yaml": "277177cb8c0fa44897105d7f47fb3c4edfb41a15c3b0bddb74268131be723d5b",
+        "cases.csv": "42b1edee28e38c82e80d6f465e5e551c0ab4df65ddda72ac1b84a732fda35dd2"
+      }
+    },
+    {
+      "id": "compressed_sparse_attention_core",
+      "level": "L5",
+      "path": "tasks/level5/compressed_sparse_attention_core",
+      "files_sha256": {
+        "desc.md": "8b702a0b238752ef9019a1bea4547a16457559998d56647ab1178150c5ca5605",
+        "proto.yaml": "b9c195fae0cfbeb8f3cbca7380e0c8b25f9331a2974873cb36ff4aab13e71a62",
+        "golden.py": "babd611da3ea4c758515ab6f6deb36d6ef702b2549213144fa57c79e632deb4d",
+        "cases.yaml": "74bafe1c4227dc63b2457a671f1129514af9bc29b2c6be1c026fca5a869fd533",
+        "cases.csv": "f49c751ef8889f81e99ee14ff6102ccdaf7c89a98638ba22f3f612b30e6c3b55"
+      }
+    },
+    {
+      "id": "kimi_delta_attention",
+      "level": "L5",
+      "path": "tasks/level5/kimi_delta_attention",
+      "files_sha256": {
+        "desc.md": "1dff78c6e1c8e7d5d72d4971dac544c391cc0f4533480275c4b413d6b70ad0c5",
+        "proto.yaml": "2d8844a2e50bcb1d96167c468c0f3b3d81d25c7ba483bff9c7769bd8b0bd5f79",
+        "golden.py": "efaeefea209a34bec6c6cfb616e46334b1f424699b7c2d3942d2154c5b0de7e8",
+        "cases.yaml": "e790889b4c68ba7d70a16ee3be881fcebc117f63fff1ab7654a88b1d4b2b4729",
+        "cases.csv": "412dc2486a1022a0b9ac5c741c62a7de8678053d067e88938bc3c2fde727ba35"
+      }
+    },
+    {
+      "id": "lact_ttt_chunk",
+      "level": "L5",
+      "path": "tasks/level5/lact_ttt_chunk",
+      "files_sha256": {
+        "desc.md": "e2c32175cb596505bac8aefc6198062e423375a5027ac1e9dbcc771800798fdf",
+        "proto.yaml": "7617a4868ccf7be6a246c6ba38bbba876a5694c723f336a1dcb9c8d2b3db329f",
+        "golden.py": "1173c70a08a52b09e84c817b9abd04294b5ac82b7ba3814317c8161c27588ce6",
+        "cases.yaml": "ee4e48db73645a3bec406041aad88b933c73b922af91d8a8e53958c46a813e6d",
+        "cases.csv": "49aa8f9d745a78af5dd0e3e02a9546a2a2be91975326fdc1e07c091af16029d8"
+      }
+    },
+    {
+      "id": "sparse_lightning_indexer_grad_kl_loss_enhance",
+      "level": "L5",
+      "path": "tasks/level5/sparse_lightning_indexer_grad_kl_loss_enhance",
+      "files_sha256": {
+        "desc.md": "48c4cb6c4d6b8c6b1a114d6162083b41526a7415f08ed610ae8dd36247592b08",
+        "proto.yaml": "e51c47e1888a47cfda5312a11e2ad8eecd7ff370efb9d6321e846a7b72fe016d",
+        "golden.py": "b2702fb1a6727e025f4c56d4e8ec1f598e7e864d694e3a7075b7c9f7dbdbbd55",
+        "cases.yaml": "4dff5c0b52c8000b0667c71e5938471e3854469a5a93544e5b7d3dcfa563f8c9",
+        "cases.csv": "001531163497b3e08d78c0ee41cafb2073a818d31b877ce1c15a371c1a4d4e83"
+      }
+    },
+    {
+      "id": "tensor_program_vm",
+      "level": "L5",
+      "path": "tasks/level5/tensor_program_vm",
+      "files_sha256": {
+        "desc.md": "b99ad79ecda4a3c173c247f2e6a104b433569f8ac43b15793808f7d26f564092",
+        "proto.yaml": "caa9328128de857ab9d474e83d910640c958ce3698e45939b1552be917ecba01",
+        "golden.py": "0c6f908f7fdad0bd486771fcd06a640401fa464cf1e2aa554e569e6f60c1d567",
+        "cases.yaml": "78a42bd9ec95063d1d253d254e6d0cacf2f8ff667c17e4294d21d6f524a062f0",
+        "cases.csv": "7c48359c4d72672f4cae67ce53b2ef29c4160796e9468c6ea13fe6ed7194a055"
+      }
+    }
+  ],
+  "metadata_fallback_policy": "same_platform_only",
+  "unsupported_operators_by_platform": {
+    "910c": [
+      "dynamic_mx_quant",
+      "embedding_hash_table_lookup_or_insert"
+    ]
+  },
+  "platform_scoring_policy": "Unsupported tasks must be excluded from pass-rate and score denominators by the platform integration; no fabricated baselines.",
+  "files_sha256_policy": "utf8_text_crlf_to_lf"
+}

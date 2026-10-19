@@ -72,6 +72,7 @@ cann_bench.gather(Tensor x, Tensor index, int dim=0) -> Tensor y
 - `index` 在 `dim` 维以外的每一维，size 不大于 `x` 对应维度；在 `dim` 维 size 由用户决定（即输出 shape）
 - `index` 元素值必须在 `[0, x.shape[dim])` 范围内
 - 输出 `y.shape == index.shape`；输出 dtype 与 `x` 一致
+- 特殊值行为：gather 仅搬运数据、不做算术，NaN/±Inf 按位原样出现在输出中；比对按 NaN==NaN、Inf 同号匹配。
 
 ### 支持范围
 

@@ -84,6 +84,7 @@ cann_bench.cross_entropy_loss(Tensor input, Tensor target, str reduction="mean",
 - `ignore_index` 仅在硬标签模式下生效
 - 输入 x 应为原始 logits（未经 softmax），内部自动应用 log_softmax
 - 需注意数值稳定性：内部实现应使用 log-sum-exp 技巧避免溢出
+- 特殊值行为（与 golden 一致）：logits 含 NaN ⇒ 相应样本 loss 为 NaN；logits 含 +Inf 时 log-softmax 产生 Inf−Inf=NaN，−Inf 对应类概率为 0，均按 IEEE 传播；比对按 NaN==NaN、Inf 同号匹配。
 
 ### 支持范围
 
@@ -187,12 +188,11 @@ def cross_entropy_loss(
         >>> target = torch.randint(0, C, (N,))
         >>> loss = cross_entropy_loss(input, target)
     """
-    # CANN 支持 int32 / int64 硬标签，而 CPU PyTorch 要求硬标签为 Long。
-    # 仅转换 Golden 使用的整型视图；浮点软标签保持原 dtype。
-    golden_target = target.long() if not target.is_floating_point() else target
+    # PyTorch CPU 的硬标签接口要求 int64；算子契约允许 int32，因此先做无损转换。
+    target_for_torch = target.to(torch.int64) if target.dtype == torch.int32 else target
     loss = torch.nn.functional.cross_entropy(
         input=input,
-        target=golden_target,
+        target=target_for_torch,
         reduction=reduction,
         ignore_index=ignore_index
     )

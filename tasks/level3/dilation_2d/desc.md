@@ -128,8 +128,8 @@ import torch
 """
 Dilation2D 算子 Torch Golden 参考实现
 
-2D形态学膨胀操作，对每个位置在膨胀窗口内取 input + filter 的最大值
-公式: y[b, y, x, c] = max_{dy,dx} (x[b, y*stride_h + rate_h*dy, x*stride_w + rate_w*dx, c] + filter[dy, dx, c])
+2D形态学膨胀操作，使用最大池化在局部邻域内获取最大值
+公式: y[b, y, x, c] = max_{dy,dx} x[b, y + rates[1]*dy, x + rates[2]*dx, c] * filter[dy, dx, c]
 """
 def dilation_2d(
     x: torch.Tensor, filter: torch.Tensor, strides: list, rates: list,
@@ -168,9 +168,7 @@ def dilation_2d(
     effective_filter_w = (filter_w - 1) * rate_w + 1
 
     if padding_mode == 'SAME':
-        # SAME 模式的输出尺寸由 TF/TensorFlow 语义固定为 ceil(in/stride)，与 ceil_mode 参数无关；
-        # 原代码在 SAME 下叠加 ceil_mode 会导致 (in - 1) % stride != 0 时输出多 1
-        # (F205 P0)。ceil_mode 仅在 VALID / else 分支生效。
+        # SAME 模式的输出尺寸由 TF 语义固定为 ceil(in/stride)，与 ceil_mode 无关
         out_h = (in_h + stride_h - 1) // stride_h
         out_w = (in_w + stride_w - 1) // stride_w
         pad_h = max((out_h - 1) * stride_h + effective_filter_h - in_h, 0)
@@ -221,8 +219,7 @@ def dilation_2d(
     if data_format == 'NHWC':
         y = y.permute(0, 2, 3, 1)  # NCHW -> NHWC
 
-    # permute 只改 stride, 而输出契约要求 contiguous (issue #146)
-    return y.contiguous()
+    return y
 ```
 
 ## 6. 额外信息

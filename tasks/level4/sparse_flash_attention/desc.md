@@ -90,7 +90,7 @@ sparse_flash_attention(Tensor query, Tensor key, Tensor value, Tensor sparseIndi
 | sparseIndices | Tensor | 是 | int32 | BSND: [B, S1, N2, topK]；BNSD: [B, N2, S1, topK] | 按 KV 头分组的稀疏索引，前三维布局与 inputLayout 一致 |
 | scaleValue | float | 是 | - | 标量 | 缩放因子，通常为 1/sqrt(Dk) |
 | inputLayout | str | 否 | - | - | 张量布局格式，"BSND"（默认）或 "BNSD" |
-| is_causal | bool | 否 | - | - | 是否启用因果掩码（右下角对齐），默认 False。True 时在稀疏选择之上额外屏蔽 KV 序列位置 `idx > s1 + (S2 - S1)` 的条目 |
+| is_causal | bool | 否 | - | - | 是否启用因果掩码（右下角对齐），默认 False。True 时在稀疏 gather 之上额外屏蔽 `sparseIndices[..., s1, i] > s1 + (S2 - S1)` 的位置 |
 
 ### 输出
 
@@ -111,9 +111,6 @@ sparse_flash_attention(Tensor query, Tensor key, Tensor value, Tensor sparseIndi
 - query 和 key 的 head dim 必须一致（Dk），value 的 head dim（Dv）可以不同
 - N1 必须整除 N2（GQA 分组约束），N1 == N2 时退化为 MHA
 - sparseIndices 的值域为 `[0, S2)`，即 KV 序列长度范围内的有效索引
-- 同一 `(b, n2, s1)` 下的 topK 个索引必须互不重复。Golden 用 scatter 把索引转成 bool mask
-  再屏蔽 scores，与逐条 gather 仅在无重复时等价；出现重复索引则该位置只被计入一次，
-  结果与"按 topK 槽位逐条累加"的语义不同
 - topK（每个 query 关注的 KV 数量）可任意取值，1 ≤ topK ≤ S2
 - scaleValue 通常设置为 $1/\sqrt{Dk}$
 - inputLayout 必须为 "BSND" 或 "BNSD"，所有张量（含 sparseIndices 和输出）的布局保持一致
@@ -174,25 +171,6 @@ sparse_flash_attention(Tensor query, Tensor key, Tensor value, Tensor sparseIndi
 ```python
 import torch
 
-"""
-SparseFlashAttention算子Torch Golden参考实现
-
-稀疏注意力，支持 GQA（N1 != N2）、不同 head dim（Dk != Dv）和 BSND/BNSD 布局
-query 仅与 sparseIndices 指定的 KV 子集计算注意力
-
-语义约束:
-    value 与 key 在数值上同源 (MLA latent KV cache):
-      - Dk == Dv 时: value == key (完全相同)
-      - Dk >  Dv 时: value == key[..., :Dv] (前缀切片，典型 MLA Dk=576 Dv=512)
-    接口保留独立入参以兼容通用 attention API；调用方需保证此关系，
-    本 Golden 实现不做强制检查。
-
-公式: mask = scatter(sparseIndices) -> bool[B, N2, S1, S2]
-      scores = Q @ K^T * scaleValue，mask 外位置置 -inf
-      y = softmax(scores) @ V          (V 语义上等于 K[..., :Dv])
-假定 sparseIndices 在同一 (b, n2, s1) 下无重复值
-"""
-
 
 def sparse_flash_attention(
     query: torch.Tensor,
@@ -218,8 +196,8 @@ def sparse_flash_attention(
         sparseIndices: 稀疏索引（int32），BSND: [B, S1, N2, topK]，BNSD: [B, N2, S1, topK]
         scaleValue: 缩放因子
         inputLayout: 张量布局，"BSND" 或 "BNSD"
-        is_causal: 是否启用因果掩码（右下角对齐），True 时在稀疏选择之上额外屏蔽
-            KV 序列位置 idx > s1 + (S2 - S1) 的条目。要求 S1 <= S2。
+        is_causal: 是否启用因果掩码（右下角对齐），True 时在稀疏 gather 之上额外屏蔽
+            sparseIndices[..., s1, i] > s1 + (S2 - S1) 的位置
 
     Returns:
         注意力输出，布局与输入一致
@@ -236,48 +214,42 @@ def sparse_flash_attention(
     B, N1, S1, Dk = q.shape
     N2 = k.shape[1]
     S2 = k.shape[2]
+    Dv = v.shape[-1]
+    topK = si.shape[-1]
     G = N1 // N2
 
-    # 用 scatter 把稀疏索引转成 bool mask: [B, N2, S1, S2]
-    mask = torch.zeros(B, N2, S1, S2, dtype=torch.bool, device=q.device)
-    mask.scatter_(-1, si.long(), True)
+    # sparseIndices 为 int32，转为 long 用于 gather
+    si = si.long()
 
-    # 因果掩码（右下角对齐）：j > i + (S2 - S1) 的列从可选集合中剔除
+    # Gather 选中的 KV: si [B, N2, S1, topK]
+    idx_k = si.reshape(B, N2, S1 * topK).unsqueeze(-1).expand(-1, -1, -1, Dk)
+    idx_v = si.reshape(B, N2, S1 * topK).unsqueeze(-1).expand(-1, -1, -1, Dv)
+    k_sel = k.gather(2, idx_k).reshape(B, N2, S1, topK, Dk)  # [B, N2, S1, topK, Dk]
+    v_sel = v.gather(2, idx_v).reshape(B, N2, S1, topK, Dv)  # [B, N2, S1, topK, Dv]
+
+    # GQA: 将 KV 头扩展到 N1 个 query 头
+    k_sel = k_sel.unsqueeze(2).expand(-1, -1, G, -1, -1, -1).reshape(B, N1, S1, topK, Dk)
+    v_sel = v_sel.unsqueeze(2).expand(-1, -1, G, -1, -1, -1).reshape(B, N1, S1, topK, Dv)
+
+    # Attention: Q @ K_sel^T -> softmax -> @ V_sel
+    scores = torch.einsum('bnsd,bnskd->bnsk', q, k_sel) * scaleValue
     if is_causal:
-        s1_idx = torch.arange(S1, device=q.device).unsqueeze(-1)  # [S1, 1]
-        s2_idx = torch.arange(S2, device=q.device).unsqueeze(0)   # [1, S2]
-        causal_keep = s2_idx <= (s1_idx + (S2 - S1))               # [S1, S2]
-        mask = mask & causal_keep  # 广播到 [B, N2, S1, S2]
-
-    # GQA: 通过 reshape 把 N1 拆成 (N2, G)，避免物化 K/V 的 head 扩展
-    q_g = q.reshape(B, N2, G, S1, Dk)
-
-    # 计算完整 scores 后用 mask 屏蔽未选位置: [B, N2, G, S1, S2]
-    # 在同一 (b, n2, s1) 下 sparseIndices 无重复，mask 与 gather 语义等价
-    scores = torch.einsum('bngsd,bnkd->bngsk', q_g, k) * scaleValue
-    scores.masked_fill_(~mask.unsqueeze(2), float('-inf'))
-
-    # 原地 softmax，避免同时持有 scores 和 attn_weights 两份张量
-    # 处理全 mask 行：当某行全被 mask 时，max 为 -inf，需要特殊处理
-    scores_max = scores.max(dim=-1, keepdim=True).values
-    all_masked = torch.isinf(scores_max) & (scores_max < 0)  # 检测全 -inf 行
-    scores -= scores_max
-    scores.exp_()
-    scores_sum = scores.sum(dim=-1, keepdim=True)
-    # 全 mask 行保持为 0，不进行除法
-    scores = torch.where(all_masked, torch.zeros_like(scores), scores / scores_sum)
-
-    # 加权求和: [B, N2, G, S1, Dv] -> [B, N1, S1, Dv]
-    out = torch.einsum('bngsk,bnkd->bngsd', scores, v)
-    out = out.reshape(B, N1, S1, -1)
+        # 右下角对齐：sparseIndices 选中的 KV 位置 idx > s1 + (S2 - S1) 时需屏蔽
+        s1_idx = torch.arange(S1, device=scores.device).view(1, 1, S1, 1)  # [1,1,S1,1]
+        # si 已为 [B, N2, S1, topK]；需扩展到 N1
+        si_n1 = si.unsqueeze(2).expand(-1, -1, G, -1, -1).reshape(B, N1, S1, topK)
+        causal_mask = si_n1 > (s1_idx + (S2 - S1))
+        scores = scores.masked_fill(causal_mask, float('-inf'))
+    attn_weights = torch.softmax(scores, dim=-1)
+    # 处理整行全 -inf 导致的 NaN：置 0
+    attn_weights = torch.nan_to_num(attn_weights, nan=0.0)
+    out = torch.einsum('bnsk,bnskd->bnsd', attn_weights, v_sel)  # [B, N1, S1, Dv]
 
     # 转回原始布局
     if inputLayout == "BSND":
-        out = out.permute(0, 2, 1, 3)   # [B, S1, N1, Dv]
-
-    # permute 只改 stride, 而输出契约要求 contiguous (issue #146)；
-    # BNSD 路径的 einsum 输出本就连续, .contiguous() 原样返回, 无额外拷贝
-    return out.contiguous()
+        return out.permute(0, 2, 1, 3)   # [B, S1, N1, Dv]
+    else:
+        return out                        # [B, N1, S1, Dv]
 ```
 
 ## 6. 额外信息

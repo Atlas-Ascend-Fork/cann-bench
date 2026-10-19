@@ -64,7 +64,8 @@ cann_bench.unsorted_segment_sum(Tensor data, Tensor segment_ids, int num_segment
 - 输出的第 0 维大小为 num_segments，其余维度与 data 的尾部维度一致：`y.shape == (num_segments, *data.shape[1:])`
 - 输出 dtype 与 data 一致
 - 若某个段 ID 在 segment_ids 中未出现，对应输出段为全零
-- num_segments 必须为正整数
+- num_segments 必须为正整数；**计分 case 保证 num_segments ≥ 2**（num_segments=1 时 segment_ids 必然全 0、可被静态跳过而不读 ids，该退化形态不进入计分）
+- 特殊值行为（与 golden 一致）：NaN/±Inf 参与段内 fp32 求和并按 IEEE 传播（同段 +Inf 与 −Inf 相加产生 NaN）；比对按 NaN==NaN、Inf 同号匹配。
 
 ### 支持范围
 

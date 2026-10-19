@@ -92,7 +92,7 @@ cann_bench.mla(Tensor q_nope, Tensor q_rope, Tensor k_nope, Tensor k_rope, Tenso
 - N_q 必须能被 N_kv 整除
 - q_nope 和 k_nope 的 head dim 一致（d_nope），q_rope 和 k_rope 的 head dim 一致（d_rope）
 - v 的 head dim = d_nope，输出的 head dim 也为 d_nope
-- **语义约束 `v == k_nope`**：v 与 k_nope 在数值上必须完全相同（共享同一份 latent KV cache）。算子接口保留独立入参以兼容标准 attention API，但调用方有责任保证两者一致；本规范的 Golden 实现不强制检查
+- **语义约束 `v == k_nope`**：v 与 k_nope 在数值上必须完全相同（共享同一份 latent KV cache）。算子接口保留独立入参以兼容标准 attention API；评测时 `get_input` 会将 v 规整为 k_nope 的副本，并将同一组合法输入同时交给 Golden 与被测算子
 - 所有输入和输出遵循相同的 layout（BSND 或 BNSD）
 - `is_causal=True` 时要求 $S \le S_{kv}$（否则 mask 会将部分 query 行全部屏蔽，导致 softmax 出现 NaN）
 
@@ -156,8 +156,8 @@ Q 和 K 均分为 nope 和 rope 两部分传入，内部拼接后计算注意力
 
 语义约束:
     v 与 k_nope 在数值上完全相同 (共享同一份 latent KV cache)。
-    算子接口为兼容通用 attention API 保留独立入参；调用方需保证两者
-    一致，本 Golden 实现不做强制检查。
+    算子接口为兼容通用 attention API 保留独立入参；get_input 会将 v
+    规整为 k_nope 的副本，确保 Golden 与被测算子接收相同的合法输入。
 
 公式:
     Q = concat(Q_nope, Q_rope)   dim: d_nope + d_rope
@@ -165,6 +165,18 @@ Q 和 K 均分为 nope 和 rope 两部分传入，内部拼接后计算注意力
     V = K_nope                    dim: d_nope     (语义上等价)
     y = softmax(Q @ K^T * scaleValue) @ V
 """
+
+
+def get_input(
+    q_nope: torch.Tensor,
+    q_rope: torch.Tensor,
+    k_nope: torch.Tensor,
+    k_rope: torch.Tensor,
+    v: torch.Tensor,
+    **kwargs,
+) -> list:
+    """强制满足 MLA 共享 latent KV cache 的 v == k_nope 语义约束。"""
+    return [q_nope, q_rope, k_nope, k_rope, k_nope.clone()]
 
 
 def mla(
@@ -252,8 +264,7 @@ def mla(
     if inputLayout == "BNSD":
         out = out.permute(0, 2, 1, 3)
 
-    # 上面的 reshape/permute 链留下的是 view, 而输出契约要求 contiguous (issue #146)
-    return out.contiguous()
+    return out
 ```
 
 ## 6. 额外信息
@@ -273,7 +284,7 @@ q_nope = torch.randn(B, S, N_q, d_nope, dtype=torch.float16, device="npu")
 q_rope = torch.randn(B, S, N_q, d_rope, dtype=torch.float16, device="npu")
 k_nope = torch.randn(B, S_kv, N_kv, d_nope, dtype=torch.float16, device="npu")
 k_rope = torch.randn(B, S_kv, N_kv, d_rope, dtype=torch.float16, device="npu")
-v = torch.randn(B, S_kv, N_kv, d_nope, dtype=torch.float16, device="npu")
+v = k_nope.clone()
 y = cann_bench.mla(q_nope, q_rope, k_nope, k_rope, v,
                       numKVHeads=N_kv, scaleValue=-1.0, inputLayout="BSND", is_causal=False)
 # y shape: [B, S, N_q, d_nope] = [2, 128, 128, 512]

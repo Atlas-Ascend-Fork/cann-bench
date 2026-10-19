@@ -184,61 +184,11 @@ cases:
   note: "S-float32-case4 | baseline_kernels: ZerosLike×3 + ConcatD×5 + Add×2 + Transpose×2 + DynamicRNN×2 + TransData×10 + ReverseV2×4"
 - operator: LSTM
   case_id: 5
-  input_shape:
-  - - 24
-    - 8
-    - 128
-  - - - 256
-      - 128
-    - - 256
-      - 128
-  - - - 256
-      - 64
-    - - 256
-      - 64
-  - &id009
-    - - 256
-    - - 256
-  - *id009
-  dtype:
-  - float16
-  - - float16
-    - float16
-  - - float16
-    - float16
-  - - float16
-    - float16
-  - - float16
-    - float16
-  attrs:
-    inputSize: 128
-    hiddenSize: 64
-    numLayers: 1
-    bias: true
-    batchFirst: false
-    dropout: 0.0
-    bidirectional: true
-    projSize: 0
-  value_range:
-  - - -1.0
-    - 1.0
-  - - &id010
-      - -0.1
-      - 0.1
-    - *id010
-  - - &id011
-      - -0.1
-      - 0.1
-    - *id011
-  - - &id012
-      - -0.01
-      - 0.01
-    - *id012
-  - - &id013
-      - -0.01
-      - 0.01
-    - *id013
-  note: "S-float16-case5 | baseline_kernels: ZerosLike×3 + ConcatD×5 + Add×2 + Transpose×2 + DynamicRNN×2 + TransData×10 + ReverseV2×4"
+  input_shape: [[192, 48, 384], [[1536, 384]], [[1536, 384]], [[1536]], [[1536]]]
+  dtype: [bfloat16, [bfloat16], [bfloat16], [bfloat16], [bfloat16]]
+  attrs: {inputSize: 384, hiddenSize: 384, numLayers: 1, bias: true, batchFirst: false, dropout: 0.0, bidirectional: false, projSize: 0}
+  value_range: [[-1.0, 1.0], [[-0.1, 0.1]], [[-0.1, 0.1]], [[-0.01, 0.01]], [[-0.01, 0.01]]]
+  note: "L-bfloat16-T192-B48-H384 [B:rebalance]"
 - operator: LSTM
   case_id: 6
   input_shape:
@@ -451,127 +401,18 @@ cases:
   note: "S-float32-case8 | baseline_kernels: ZerosLike×3 + ConcatD×5 + Add×2 + Transpose×2 + DynamicRNN×2 + TransData×10 + ReverseV2×4"
 - operator: LSTM
   case_id: 9
-  input_shape:
-  - - 15
-    - 12
-    - 128
-  - - - 256
-      - 128
-    - - 256
-      - 128
-    - - 256
-      - 128
-    - - 256
-      - 128
-  - - - 256
-      - 64
-    - - 256
-      - 64
-    - - 256
-      - 64
-    - - 256
-      - 64
-  - &id029
-    - - 256
-    - - 256
-    - - 256
-    - - 256
-  - *id029
-  dtype:
-  - bfloat16
-  - - bfloat16
-    - bfloat16
-    - bfloat16
-    - bfloat16
-  - - bfloat16
-    - bfloat16
-    - bfloat16
-    - bfloat16
-  - - bfloat16
-    - bfloat16
-    - bfloat16
-    - bfloat16
-  - - bfloat16
-    - bfloat16
-    - bfloat16
-    - bfloat16
-  attrs:
-    inputSize: 128
-    hiddenSize: 64
-    numLayers: 2
-    bias: true
-    batchFirst: false
-    dropout: 0.0
-    bidirectional: true
-    projSize: 0
-  value_range:
-  - - -1.0
-    - 1.0
-  - - &id030
-      - -0.1
-      - 0.1
-    - *id030
-    - *id030
-    - *id030
-  - - &id031
-      - -0.1
-      - 0.1
-    - *id031
-    - *id031
-    - *id031
-  - - &id032
-      - -0.01
-      - 0.01
-    - *id032
-    - *id032
-    - *id032
-  - - &id033
-      - -0.01
-      - 0.01
-    - *id033
-    - *id033
-    - *id033
-  note: "S-bfloat16-case9 | baseline_kernels: ZerosLike×3 + ConcatD×5 + Add×2 + Transpose×2 + Cast×26 + DynamicRNN×2 + TransData×10 + ReverseV2×4"
+  input_shape: [[512, 8, 320], [[1280, 320]], [[1280, 320]], [[1280]], [[1280]]]
+  dtype: [bfloat16, [bfloat16], [bfloat16], [bfloat16], [bfloat16]]
+  attrs: {inputSize: 320, hiddenSize: 320, numLayers: 1, bias: true, batchFirst: false, dropout: 0.0, bidirectional: false, projSize: 0}
+  value_range: [[-1.0, 1.0], [[-0.1, 0.1]], [[-0.1, 0.1]], [[-0.01, 0.01]], [[-0.01, 0.01]]]
+  note: "M-bfloat16-T512-B8-H320-长序列 [B:rebalance]"
 - operator: LSTM
   case_id: 10
-  input_shape:
-  - - 6
-    - 8
-    - 64
-  - - - 128
-      - 64
-  - - - 128
-      - 32
-  - &id034
-    - - 128
-  - *id034
-  dtype:
-  - float32
-  - - float32
-  - - float32
-  - - float32
-  - - float32
-  attrs:
-    inputSize: 64
-    hiddenSize: 32
-    numLayers: 1
-    bias: true
-    batchFirst: true
-    dropout: 0.0
-    bidirectional: false
-    projSize: 0
-  value_range:
-  - - -1.0
-    - 1.0
-  - - - -0.1
-      - 0.1
-  - - - -0.1
-      - 0.1
-  - - - -0.01
-      - 0.01
-  - - - -0.01
-      - 0.01
-  note: "S-float32-case10 | baseline_kernels: ZerosLike×3 + ConcatD×1 + Add×1 + Transpose×1 + DynamicRNN×1 + TransData×5"
+  input_shape: [[256, 32, 512], [[2048, 512]], [[2048, 512]], [[2048]], [[2048]]]
+  dtype: [float32, [float32], [float32], [float32], [float32]]
+  attrs: {inputSize: 512, hiddenSize: 512, numLayers: 1, bias: true, batchFirst: false, dropout: 0.0, bidirectional: false, projSize: 0}
+  value_range: [[-1.0, 1.0], [[-0.1, 0.1]], [[-0.1, 0.1]], [[-0.01, 0.01]], [[-0.01, 0.01]]]
+  note: "L-float32-T256-B32-H512 [B:rebalance - open set was all-clip, L-tier lived only in hidden]"
 - operator: LSTM
   case_id: 11
   input_shape:
@@ -793,44 +634,11 @@ cases:
   note: "S-float32-case15 | baseline_kernels: ZerosLike×3 + ConcatD×1 + Add×1 + Transpose×1 + DynamicRNN×1 + TransData×5"
 - operator: LSTM
   case_id: 16
-  input_shape:
-  - - 5
-    - 2
-    - 32
-  - - - 64
-      - 32
-  - - - 64
-      - 16
-  - &id040
-    - - 64
-  - *id040
-  dtype:
-  - float16
-  - - float16
-  - - float16
-  - - float16
-  - - float16
-  attrs:
-    inputSize: 32
-    hiddenSize: 16
-    numLayers: 1
-    bias: true
-    batchFirst: false
-    dropout: 0.0
-    bidirectional: false
-    projSize: 0
-  value_range:
-  - - -1.0
-    - 1.0
-  - - - -0.1
-      - 0.1
-  - - - -0.1
-      - 0.1
-  - - - -0.01
-      - 0.01
-  - - - -0.01
-      - 0.01
-  note: "S-float16-case16 | baseline_kernels: ZerosLike×3 + ConcatD×1 + Add×1 + Transpose×1 + DynamicRNN×1 + TransData×5"
+  input_shape: [[128, 16, 256], [[1024, 256], [1024, 256]], [[1024, 256], [1024, 256]], [[1024], [1024]], [[1024], [1024]]]
+  dtype: [float32, [float32, float32], [float32, float32], [float32, float32], [float32, float32]]
+  attrs: {inputSize: 256, hiddenSize: 256, numLayers: 2, bias: true, batchFirst: false, dropout: 0.0, bidirectional: false, projSize: 0}
+  value_range: [[-1.0, 1.0], [[-0.1, 0.1], [-0.1, 0.1]], [[-0.1, 0.1], [-0.1, 0.1]], [[-0.01, 0.01], [-0.01, 0.01]], [[-0.01, 0.01], [-0.01, 0.01]]]
+  note: "M-float32-T128-B16-H256-2layer [B:rebalance]"
 - operator: LSTM
   case_id: 17
   input_shape:

@@ -22,11 +22,11 @@ operator:
     required: true
   inputs:
   - name: boxes
-    description: 输入候选框，格式为 [x1, y1, x2, y2]
+    description: 输入候选框，格式为 [x1, y1, x2, y2]，坐标为有限值
     dtype:
     - float32
   - name: scores
-    description: 每个候选框的置信度分数
+    description: 每个候选框的置信度分数，取值为 [0, 1] 内的有限值
     dtype:
     - float32
   outputs:

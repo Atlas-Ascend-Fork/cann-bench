@@ -109,5 +109,4 @@ def dilation_2d(
     if data_format == 'NHWC':
         y = y.permute(0, 2, 3, 1)  # NCHW -> NHWC
 
-    # permute 只改 stride, 而输出契约要求 contiguous (issue #146)
-    return y.contiguous()
+    return y

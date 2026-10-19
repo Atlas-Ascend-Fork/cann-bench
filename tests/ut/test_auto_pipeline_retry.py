@@ -412,8 +412,9 @@ def test_retry_pypto_skips_completed_multiclass_workspace_custom(monkeypatch, tm
     source_output = tmp_path / "source"
     workspace = tmp_path / "pypto-workspace"
     retry_output = tmp_path / "retry-pypto-multi"
-    _write_config(config_path, agent_type="pypto", selectors=["tasks/level1/gelu"])
-    classes = classify_cases(REPO_ROOT / "tasks" / "level1" / "gelu" / "cases.yaml")
+    selector = "archives/season1/tasks/level1/gelu"
+    _write_config(config_path, agent_type="pypto", selectors=[selector])
+    classes = classify_cases(REPO_ROOT / selector / "cases.yaml")
     assert len(classes) > 1  # gelu is genuinely multi-class
     _write_completed_multiclass_custom(workspace / "custom" / "gelu", "gelu", classes)
     (source_output / "gelu").mkdir(parents=True)
@@ -423,7 +424,7 @@ def test_retry_pypto_skips_completed_multiclass_workspace_custom(monkeypatch, tm
         config_path=config_path,
         source_output=source_output,
         workspace=workspace,
-        tasks=[("gelu", "tasks/level1/gelu")],
+        tasks=[("gelu", selector)],
     )
 
     def fail_run_opencode(self, *args, **kwargs):

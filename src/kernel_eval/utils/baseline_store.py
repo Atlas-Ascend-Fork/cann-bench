@@ -142,6 +142,25 @@ class BaselineStore:
 
         self._baseline_dir = metadata_dir
 
+        # Versioned suites may forbid cross-platform fallback. In particular,
+        # unpublished 950 metadata and missing A3 measurements must not silently
+        # inherit 910B2 timings. Legacy suites keep their original behavior.
+        manifest_path = metadata_dir.parent / "suite_manifest.json"
+        if manifest_path.is_file():
+            manifest = self._load_json(manifest_path)
+            if manifest.get("metadata_fallback_policy") == "same_platform_only":
+                platform_file = metadata_dir / f"{self.hardware}.json"
+                self._data = self._load_json(platform_file) if platform_file.is_file() else {}
+                self._fallback_data = {}
+                if not self._data:
+                    logger.warning(
+                        "BaselineStore: suite=%r has no published metadata for %r; "
+                        "cross-platform fallback is disabled.",
+                        manifest.get("suite"), self.hardware,
+                    )
+                self._loaded = True
+                return
+
         # 加载目标平台的 JSON
         platform_file = metadata_dir / f"{self.hardware}.json"
         if platform_file.is_file():

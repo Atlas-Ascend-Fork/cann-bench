@@ -169,11 +169,9 @@ cases:
   - [1048583]
   - [1048583]
   dtype: [float32, int32]
-  attrs: {num_segments: 1}
-  value_range:
-  - [-10, 10]
-  - [0, 0]
-  note: "S-float32-num_segments=1-1M-质数非对齐-全归约 | baseline_kernels: ZerosLike×1 + Cast×1 + InplaceScatterAdd×1"
+  attrs: {num_segments: 5}
+  value_range: [[-10, 10], [0, 4]]
+  note: "S-float32-num_segments=5-1M-质数非对齐-重归约 [B:replaced num_segments=1 ids-skippable degenerate] | baseline_kernels: ZerosLike×1 + Cast×1 + InplaceScatterAdd×1"
 - operator: UnsortedSegmentSum
   case_id: 16
   input_shape:

@@ -36,7 +36,9 @@ $$
 |------|---------|
 | base ≤ 0, scale=1, shift=0 | $y = e^x$ |
 | base > 0, scale=1, shift=0 | $y = base^x$ |
-| base=1（任意 scale, shift） | $y = 1$（因 $\ln 1 = 0$） |
+| base=1 且 x 为有限值（任意 scale, shift） | $y = 1$（因 $\ln 1 = 0$） |
+| base=1 且 x 含 ±Inf / NaN | 对应位置 $y = \mathrm{NaN}$（$\pm\mathrm{Inf} \cdot 0 = \mathrm{NaN}$，与 golden 一致） |
+| scale=0 且 x 为有限值（任意 base） | $y = base^{shift}$（常数输出，与 x 无关） |
 
 ## 3. 接口规范
 
@@ -75,6 +77,7 @@ cann_bench.exp(Tensor x, float base=-1.0, float scale=1.0, float shift=0.0) -> T
 - `base` 参数：≤ 0 时一律视为自然底数 $e$；> 0 时使用该值作为底数
 - `x` 支持任意维度（1D ~ 5D 及更高维），不限制具体 shape
 - 需注意数值溢出：float16 的有效范围约 [-65504, 65504]，float32 下 $e^x$ 在 $|x| > 88$ 左右可能溢出为 inf
+- 特殊值行为（与 golden 一致）：NaN 按 IEEE 传播；±Inf 经 $(x \cdot scale + shift) \cdot \ln base$ 与指数运算按 IEEE 规则产生 0 / Inf / NaN（base=1 的非有限输入见「特殊情况」表）；比对按 NaN==NaN、Inf 同号匹配
 
 ### 支持范围
 
@@ -88,6 +91,7 @@ cann_bench.exp(Tensor x, float base=-1.0, float scale=1.0, float shift=0.0) -> T
 | `base` | -1.0 ~ 1024.0 | cases.csv 实测 -1.0 / 1.0 / 2.0 / 10.0；≤ 0 时一律视为自然底数 e |
 | `scale` | -1024.0 ~ 1024.0 | cases.csv 实测 0.5 ~ 2.0 |
 | `shift` | -1024.0 ~ 1024.0 | cases.csv 实测 0.0 ~ 2.0 |
+| `x` 元素值 | 全范围（含 ±Inf / NaN） | 特殊值语义见「特殊情况」与「规则与约束」 |
 
 ## 4. 精度要求
 
@@ -139,18 +143,10 @@ def exp(
     Returns:
         指数计算结果
     """
-    # FP16/BF16 输入为保证精度会先提升到 FP32 计算
-    input_dtype = x.dtype
-    compute_dtype = torch.float32 if input_dtype in (torch.float16, torch.bfloat16) else input_dtype
-    x_compute = x.to(compute_dtype)
-
-    temp = scale * x_compute + shift
+    temp = scale * x + shift
     if base > 0:
-        temp = temp * torch.log(torch.tensor(base, dtype=temp.dtype, device=temp.device))
-    y = torch.exp(temp)
-
-    # 计算完成后恢复到输入 dtype
-    return y.to(input_dtype)
+        temp = temp * torch.log(torch.tensor(base, dtype=x.dtype, device=x.device))
+    return torch.exp(temp)
 ```
 
 ## 6. 额外信息

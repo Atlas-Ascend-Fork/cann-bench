@@ -72,6 +72,8 @@ cann_bench.rms_norm(Tensor x, Tensor gamma, float epsilon=1e-6) -> Tensor y
 - gamma 的 dtype 需与 x 一致
 - epsilon 为正数，通常取 1e-6 或 1e-5
 - 需注意数值稳定性：当输入值极小时，mean(x^2) 可能下溢；当输入值极大时，x^2 可能溢出
+- 数值精度：内部以 **fp32 累加**计算 mean(x²)（golden 即如此实现），参赛实现须保证等效累加精度
+- 特殊值行为（与 golden 一致）：x 某行含 NaN ⇒ 该行输出整行 NaN；x 某行含 ±Inf（无 NaN）⇒ mean(x²)=+Inf，Inf 位置输出 NaN（Inf/Inf），有限位置输出 0（有限/Inf，再乘 gamma）；gamma 含 NaN/±Inf 按 IEEE 传播；比对按 NaN==NaN、Inf 同号匹配。
 
 ### 支持范围
 
@@ -84,6 +86,7 @@ cann_bench.rms_norm(Tensor x, Tensor gamma, float epsilon=1e-6) -> Tensor y
 | 前导维度乘积 `S = N0*N1*...` | 1 ~ 2097152 | cases.csv 实测 231 ~ 1000003 |
 | `gamma` 维度数 | 1 | 固定为 1 维 |
 | `epsilon` | 1e-12 ~ 1 | cases.csv 实测 1e-12 ~ 1e-3；须为正数，常用 1e-6 / 1e-5 |
+| `x` 元素值 | \|x\| ≤ 1e19 | fp32 累加下 x² 不溢出的安全界；计分 case 不超出本界（特殊值 case 除外，语义见规则与约束） |
 
 ## 4. 精度要求
 

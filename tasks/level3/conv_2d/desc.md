@@ -66,6 +66,7 @@ cann_bench.conv_2d(Tensor x, Tensor filter, Tensor bias, int[] strides, int[] pa
 - pads 指定四方向填充 [pad_top, pad_bottom, pad_left, pad_right]
 - dilations 指定膨胀率，默认 [1, 1]
 - 不支持分组卷积；如需分组/depthwise，使用 `depthwise_conv_2d`
+- 数值路径自由：实现可采用任意内部计算路径与精度（包括 HF32 以及多趟拆分/补偿算法等），只要输出满足本文档「精度要求」即为合法实现；精度门是唯一判据，不限定与 golden 相同的计算路径。
 
 ### 支持范围
 

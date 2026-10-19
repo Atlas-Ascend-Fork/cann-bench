@@ -67,6 +67,7 @@ cann_bench.top_k(Tensor x, int k, int dim, bool largest) -> (Tensor y, Tensor id
 - dim 支持负数索引，取值范围为 -ndim ~ ndim-1
 - 当 largest=true 时返回最大的 k 个元素，largest=false 时返回最小的 k 个元素
 - 输出 shape 与输入相同，仅 dim 维度大小变为 k
+- 并列（tie）行为：当第 k 名存在相等值时，选取哪些/哪个索引**不作保证**（`torch.topk` 在并行路径下即为非确定行为，已实测验证）；计分按序无关方式判定——`values` 多重集须一致，`indices` 仅验证合法性（所指元素须满足 top-k 条件）
 
 ### 支持范围
 

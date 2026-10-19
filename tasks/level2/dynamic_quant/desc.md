@@ -69,6 +69,7 @@ cann_bench.dynamic_quant(Tensor x) -> (Tensor y, Tensor scale)
 - 输出 shape 与输入 shape 完全一致
 - 全零 token 防除零：golden 对 abs_max 应用 `clamp(min=1e-12)` 保证 scale > 0，避免 0/0 NaN（NPU 实现行为类似；用户仍应避免大量全零输入以免数值无效）
 - golden 对 `round(x / scale)` 应用 `clamp(-128, 127)` 防止 int8 模 256 截断（罕见数值边界场景）
+- 特殊值行为（与 golden 一致，torch CPU 口径）：某 token 含 NaN ⇒ 该 token 的 `scale` 输出 NaN、`y` 全 0（NaN 经 int8 转换为 0）；含 ±Inf 而无 NaN ⇒ `scale` 输出 +Inf、`y` 全 0；比对按 NaN==NaN、Inf 同号匹配。
 
 ### 支持范围
 

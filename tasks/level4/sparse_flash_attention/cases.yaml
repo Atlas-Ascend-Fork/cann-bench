@@ -172,67 +172,25 @@ cases:
 - operator: SparseFlashAttention
   case_id: 6
   input_shape:
-  - - 16
-    - 1
-    - 32
-    - 128
-  - - 16
-    - 8192
-    - 8
-    - 128
-  - - 16
-    - 8192
-    - 8
-    - 128
-  - - 16
-    - 1
-    - 8
-    - 512
-  dtype:
-  - float16
-  - float16
-  - float16
-  - int32
-  attrs:
-    scaleValue: 0.08838
-    inputLayout: BSND
-    is_causal: false
-  value_range:
-  - -1
-  - 1
-  note: "float16-BSND-GQA-B16S1-decode-top512"
+  - [4, 1, 32, 128]
+  - [4, 2048, 8, 128]
+  - [4, 2048, 8, 128]
+  - [4, 1, 8, 256]
+  dtype: [float16, float16, float16, int32]
+  attrs: {scaleValue: 0.08838, inputLayout: BSND, is_causal: false}
+  value_range: [-1, 1]
+  note: "[R:bounded-resource] dtype=float16/float16/float16/int32; shapes=4x1x32x128/4x2048x8x128/4x2048x8x128/4x1x8x256; inputLayout=BSND,is_causal=False"
 - operator: SparseFlashAttention
   case_id: 7
   input_shape:
-  - - 32
-    - 32
-    - 1
-    - 192
-  - - 32
-    - 8
-    - 8192
-    - 192
-  - - 32
-    - 8
-    - 8192
-    - 128
-  - - 32
-    - 8
-    - 1
-    - 1024
-  dtype:
-  - bfloat16
-  - bfloat16
-  - bfloat16
-  - int32
-  attrs:
-    scaleValue: 0.07217
-    inputLayout: BNSD
-    is_causal: false
-  value_range:
-  - -1
-  - 1
-  note: "bfloat16-BNSD-GQA-B32S1-decode-Dk192-top1024"
+  - [4, 32, 1, 192]
+  - [4, 8, 2048, 192]
+  - [4, 8, 2048, 128]
+  - [4, 8, 1, 256]
+  dtype: [bfloat16, bfloat16, bfloat16, int32]
+  attrs: {scaleValue: 0.07217, inputLayout: BNSD, is_causal: false}
+  value_range: [-1, 1]
+  note: "[R:bounded-resource] dtype=bfloat16/bfloat16/bfloat16/int32; shapes=4x32x1x192/4x8x2048x192/4x8x2048x128/4x8x1x256; inputLayout=BNSD,is_causal=False"
 - operator: SparseFlashAttention
   case_id: 8
   input_shape:
@@ -395,36 +353,11 @@ cases:
   note: "float16-BNSD-MLA-Dk576-top512 | baseline_kernels: Transpose×2 + Slice×4 + SparseFlashAttention×1"
 - operator: SparseFlashAttention
   case_id: 13
-  input_shape:
-  - - 1
-    - 128
-    - 128
-    - 512
-  - - 1
-    - 2048
-    - 1
-    - 512
-  - - 1
-    - 2048
-    - 1
-    - 512
-  - - 1
-    - 128
-    - 1
-    - 512
-  dtype:
-  - float16
-  - float16
-  - float16
-  - int32
-  attrs:
-    scaleValue: 0.04419
-    inputLayout: BSND
-    is_causal: true
-  value_range:
-  - -1
-  - 1
-  note: "float16-BSND-MLA-top512-long-causal | baseline_kernels: SparseFlashAttention×1"
+  input_shape: [[2, 64, 128, 512], [2, 1536, 1, 512], [2, 1536, 1, 512], [2, 64, 1, 512]]
+  dtype: [float16, float16, float16, int32]
+  attrs: {scaleValue: 0.04419, inputLayout: BSND, is_causal: true}
+  value_range: [-1, 1]
+  note: "M-float16-B2-Sq64-Skv1536-去重替换 [R:replaced exact dup of c9]"
 - operator: SparseFlashAttention
   case_id: 14
   input_shape:
@@ -460,35 +393,14 @@ cases:
 - operator: SparseFlashAttention
   case_id: 15
   input_shape:
-  - - 32
-    - 64
-    - 1
-    - 576
-  - - 32
-    - 1
-    - 8192
-    - 576
-  - - 32
-    - 1
-    - 8192
-    - 512
-  - - 32
-    - 1
-    - 1
-    - 1024
-  dtype:
-  - bfloat16
-  - bfloat16
-  - bfloat16
-  - int32
-  attrs:
-    scaleValue: 0.04167
-    inputLayout: BNSD
-    is_causal: false
-  value_range:
-  - -1
-  - 1
-  note: "bfloat16-BNSD-MLA-B32S1-decode-Dk576-top1024"
+  - [4, 64, 1, 576]
+  - [4, 1, 2048, 576]
+  - [4, 1, 2048, 512]
+  - [4, 1, 1, 256]
+  dtype: [bfloat16, bfloat16, bfloat16, int32]
+  attrs: {scaleValue: 0.04167, inputLayout: BNSD, is_causal: false}
+  value_range: [-1, 1]
+  note: "[R:bounded-resource] dtype=bfloat16/bfloat16/bfloat16/int32; shapes=4x64x1x576/4x1x2048x576/4x1x2048x512/4x1x1x256; inputLayout=BNSD,is_causal=False"
 - operator: SparseFlashAttention
   case_id: 16
   input_shape:

@@ -235,6 +235,5 @@ cases:
   - [512, 64]
   dtype: [bfloat16]
   attrs: {k: 8}
-  value_range:
-  - [0, 0]
-  note: "XS-bfloat16-2D-零值输入-tokens512-experts64-k8 | baseline_kernels: MoeGatingTopKSoftmax×1"
+  value_range: [[-1, 1]]
+  note: "XS-bfloat16-2D-常规值域-tokens512-experts64-k8 [R:replaced all-zero all-tie degenerate] | baseline_kernels: MoeGatingTopKSoftmax×1"

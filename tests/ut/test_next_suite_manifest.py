@@ -3,7 +3,7 @@
 # Licensed under the CANN Open Software License Agreement Version 2.0.
 # See the repository LICENSE for the full text.
 
-"""Static release-selection contracts, independent of torch/NPU availability."""
+"""Historical proposal contracts and their explicit Season2 release transition."""
 
 import ast
 import csv
@@ -18,6 +18,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = json.loads((ROOT / "docs/design/next_suite_20260924.json").read_text(encoding="utf-8"))
 OPERATORS = MANIFEST["operators"]
+RELEASE = json.loads((ROOT / "tasks/suite_manifest.json").read_text(encoding="utf-8"))
 
 
 def test_selection_counts_and_unique_identifiers():
@@ -43,7 +44,9 @@ def test_delivery_names_and_golden_entry(record):
     assert record["path"].startswith("tasks/" if retained else "bench_lab/")
     if retained:
         assert record["path"] == record["previous_path"]
-    folder = ROOT / record["path"]
+    # The dated proposal is historical, not the live Season2 task manifest.
+    # Its retained Season1 deliveries remain testable in the unchanged archive.
+    folder = ROOT / ("archives/season1" if retained else "") / record["path"]
     assert folder.resolve().is_relative_to(ROOT.resolve())
     assert re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", name)
     assert folder.name == name
@@ -62,6 +65,20 @@ def test_delivery_names_and_golden_entry(record):
     assert cases and len(cases) == len(csv_cases)
     assert {c["operator"] for c in cases} == {operator_name}
     assert {c["operator"] for c in csv_cases} == {operator_name}
+
+
+def test_historical_proposal_transitions_to_final_season2_selection():
+    proposed = {r["id"] for r in OPERATORS}
+    released = {r["id"] for r in RELEASE["operators"]}
+    assert proposed - released == {"resize_bilinear"}
+    assert released - proposed == {"attention_residual"}
+    assert len(released) == 60
+    assert Counter(r["level"] for r in RELEASE["operators"]) == {
+        "L1": 2, "L2": 13, "L3": 27, "L4": 13, "L5": 5,
+    }
+    retained = {p.parent.name for p in (ROOT / "archives/season1/tasks").glob("level*/*/proto.yaml")}
+    assert len(released & retained) == 39
+    assert len(released - retained) == 21
 
 
 def test_duplicate_kept_in_lab_but_not_selected():

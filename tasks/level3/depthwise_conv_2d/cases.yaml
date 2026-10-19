@@ -264,11 +264,8 @@ cases:
     padding: [1, 1]
     dilation: [1, 1]
     groups: 63
-  value_range:
-  - [-.inf, .inf]
-  - [-.inf, .inf]
-  - [-.inf, .inf]
-  note: "S-float32-200K-非对齐-inf特殊值"
+  value_range: [[-1.0e17, 1.0e17], [-1.0e17, 1.0e17], [-1.0e34, 1.0e34]]
+  note: "S-float32-宽动态范围累加 [B:replaced ±inf degenerate]"
 - operator: DepthwiseConv2D
   case_id: 14
   input_shape:
@@ -284,11 +281,8 @@ cases:
     padding: [1, 1]
     dilation: [1, 1]
     groups: 11
-  value_range:
-  - [.nan, .nan]
-  - [.nan, .nan]
-  - [.nan, .nan]
-  note: "S-float16-5K-质数非对齐-nan特殊值"
+  value_range: [[-6.0e-05, 6.0e-05], [-6.0e-05, 6.0e-05], [-6.0e-05, 6.0e-05]]
+  note: "S-float16-次正规密集(subnormal)输入 [B:replaced all-NaN degenerate]"
 - operator: DepthwiseConv2D
   case_id: 15
   input_shape:
@@ -304,11 +298,8 @@ cases:
     padding: [1, 1]
     dilation: [1, 1]
     groups: 63
-  value_range:
-  - [0, 0]
-  - [0, 0]
-  - [0, 0]
-  note: "S-bfloat16-400K-非对齐-零值"
+  value_range: [[-1.0e18, 1.0e18], [-1.0e18, 1.0e18], [-1.0e36, 1.0e36]]
+  note: "S-bfloat16-400K-非对齐-宽动态范围(近bf16上界) [B:replaced all-zero degenerate]"
 - operator: DepthwiseConv2D
   case_id: 16
   input_shape:

@@ -135,8 +135,8 @@ cases:
   - [3, 7, 11, 13, 1013]
   dtype: [int64]
   attrs: {dim: -1}
-  value_range: [0, 0]
-  note: "M-int64-3M-质数非对齐-5D-dim=-1-零值 | baseline_kernels: ArgMaxV2×1 + Cast×1"
+  value_range: [-9000000000000000000, 9000000000000000000]
+  note: "M-int64-3M-质数非对齐-5D-dim=-1-int64宽值域(全量扫描不可提前停) [B:replaced all-zero; below INT64_MAX (c594a18 gen-bug family)] | baseline_kernels: ArgMaxV2×1 + Cast×1"
 - operator: ArgMax
   case_id: 17
   input_shape:

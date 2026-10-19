@@ -34,6 +34,7 @@ from kernel_eval.utils.path_resolver import resolve_task_dir
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+SEASON1_GELU_SELECTOR = "archives/season1/tasks/level1/gelu"
 
 
 def _build_submission(adapter, case: CannBenchCase, artifact: Artifact, *, output_dir: Path) -> Submission:
@@ -63,7 +64,7 @@ def _generation_task(case: CannBenchCase, workdir: Path, *, timeout_sec: int = 3
 def test_loads_cann_bench_gelu_case():
     client = CannBenchClient(REPO_ROOT)
 
-    case = client.load_case("cann", "tasks/level1/gelu")
+    case = client.load_case("cann", SEASON1_GELU_SELECTOR)
 
     assert case.operator == "Gelu"
     assert case.files["proto"].name == "proto.yaml"
@@ -281,7 +282,7 @@ def test_pypto_opencode_permission_merge_preserves_existing_rules():
 
 def test_pypto_adapter_validates_backend_artifact(tmp_path):
     client = CannBenchClient(REPO_ROOT)
-    case = client.load_case("cann", "tasks/level1/gelu")
+    case = client.load_case("cann", SEASON1_GELU_SELECTOR)
     adapter = create_converter("pypto", "cann", {})
     assert isinstance(adapter, PyptoToCannConverter)
 
@@ -1572,7 +1573,7 @@ def test_config_runner_wires_simplified_pypto_config_and_derived_paths(monkeypat
 
     cfg = {
         "agent": {"type": "pypto"},
-        "benchmark": {"root": str(REPO_ROOT), "name": "cann", "tasks": ["tasks/level1/gelu"]},
+        "benchmark": {"root": str(REPO_ROOT), "name": "cann", "tasks": [SEASON1_GELU_SELECTOR]},
     }
 
     result = run_from_mapping(
@@ -1670,7 +1671,7 @@ def test_pipeline_snapshots_pypto_custom_and_summarizes_tokens(monkeypatch, tmp_
 
     pipeline = BenchmarkPipeline(bench_name="cann", client=client)
     result = pipeline.run_case(
-        selector="tasks/level1/gelu",
+        selector=SEASON1_GELU_SELECTOR,
         generator=FakeGenerator(),
         converter=FakeConverter(),
         workdir=tmp_path / "run" / "gelu" / "work",

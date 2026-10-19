@@ -93,6 +93,7 @@ cann_bench.grouped_matmul(
   - false：weight 形状 `[E, K, N]`，每片 `weight[g]` 直接参与 matmul
   - true：weight 形状 `[E, N, K]`，每片 `weight[g]` 需 transpose 最后两维后参与 matmul
 - **维度限制**：每维大小在 32 字节对齐后应小于 int32 最大值
+- 数值路径自由：实现可采用任意内部计算路径与精度（包括 HF32 以及多趟拆分/补偿算法等），只要输出满足本文档「精度要求」即为合法实现；精度门是唯一判据，不限定与 golden 相同的计算路径。
 
 ### 支持范围
 

@@ -119,17 +119,17 @@ cann_bench.mla_prolog(Tensor token_x, Tensor w_dq, Tensor w_uq_qr, Tensor w_uk, 
 |---|---|---|
 | `B`（batch，token_x[0]） | 1 ~ 128 | CANN 上限 65536；cases.csv 实测 1 ~ 128 |
 | `S`（序列长度，token_x[1]） | **1 ~ 16** | CANN 文档硬约束 S ∈ [0, 16]；S ≥ 1（不支持空序列） |
-| `He`（hidden，token_x[2] / w_dq[0] / w_dkv_kr[0]） | **{6144, 7168, 7680}** | CANN 文档枚举值；cases.csv 实测 6144（compact）与 7168（DSv3） |
+| `He`（hidden，token_x[2] / w_dq[0] / w_dkv_kr[0]） | **{6144, 7168, 7680}** | CANN 文档枚举值；cases.csv 实测 6144（compact）、7168（DSv3）、7680 |
 | `Hcq`（query 压缩维，w_dq[1] / w_uq_qr[0] / γ_cq） | **固定 1536** | CANN 文档固定值 |
-| `N`（注意力头数，n_heads / w_uk[0]） | **{1, 2, 4, 8, 16, 32, 64, 128}** | CANN 文档枚举值；cases.csv 实测固定 128 |
+| `N`（注意力头数，n_heads / w_uk[0]） | **{1, 2, 4, 8, 16, 32, 64, 128}** | CANN 文档枚举值；cases.csv 实测 64 / 128 |
 | `D`（每头 query/key 内容维，w_uk[1]） | **固定 128** | CANN 文档固定值 |
 | `Hckv`（KV 压缩维，w_uk[2] / γ_ckv） | **固定 512** | CANN 文档固定值 |
 | `Dr`（RoPE 维度，rope_sin[2] / rope_cos[2]） | **固定 64** | CANN 文档固定值 |
 | `w_uq_qr[1]` | = N \* (D + Dr) | cases.csv 实测 24576 = 128 \* (128 + 64） |
 | `w_dkv_kr[1]` | = Hckv + Dr | cases.csv 实测 576 = 512 + 64 |
-| `rmsnorm_epsilon_cq` | 1e-8 ~ 1e-3 | cases.csv 实测 1e-6 / 1e-5（默认 1e-5），必须 > 0 |
-| `rmsnorm_epsilon_ckv` | 1e-8 ~ 1e-3 | cases.csv 实测 1e-8 / 1e-5（默认 1e-5），必须 > 0 |
-| 输入数值范围 | [-1, 1] 典型 | cases.csv 实测 [-1, 1]（19 case）和 [0, 0]（zero-input 1 case） |
+| `rmsnorm_epsilon_cq` | 1e-8 ~ 1e-3 | cases.csv 实测 1e-8 ~ 1e-3（默认 1e-5），必须 > 0 |
+| `rmsnorm_epsilon_ckv` | 1e-8 ~ 1e-3 | cases.csv 实测 1e-8 ~ 1e-3（默认 1e-5），必须 > 0 |
+| 输入数值范围 | [-1, 1] 典型 | cases.csv 实测 [-1, 1]（19 case）和 [0, 1]（非对称 1 case） |
 
 约束：
 - 所有 9 个 Tensor 输入 dtype 必须为 `bfloat16`
@@ -176,10 +176,8 @@ cann_bench.mla_prolog(Tensor token_x, Tensor w_dq, Tensor w_uq_qr, Tensor w_uk, 
 ### BF16 精度特点
 
 - bfloat16: ~3 位有效数字，动态范围与 float32 相同（8 位指数），推理场景常用
-- golden 在 bf16/fp16 输入下把 token_x 与全部权重升到 fp32，整条链路（含矩阵乘法）在 fp32
-  下计算，仅在返回前将四个输出降回输入 dtype；实现侧若用 bf16×bf16→bf16 累加，误差可能超出
-  精度比对阈值
-- 向量运算（RMSNorm、RoPE）同样在 fp32 下计算，输入输出为 bf16
+- 矩阵乘法（CUBE 核心）使用 bf16×bf16→bf16
+- 向量运算（VEC 核心，如 RMSNorm、RoPE）内部使用 fp32 计算，输入输出为 bf16
 
 ### RMSNorm 数值稳定性
 
@@ -224,18 +222,19 @@ cann_bench.mla_prolog(Tensor token_x, Tensor w_dq, Tensor w_uq_qr, Tensor w_uk, 
 
 ```python
 import torch
-from typing import Tuple
-
-"""
-MlaProlog算子Torch Golden参考实现
-
-Multi-Head Latent Attention前处理，融合 Query/Key 投影、RMSNorm 和 RoPE
-"""
 
 
 def rms_norm(x, gamma, epsilon):
     """
     RMSNorm: gamma * x / sqrt(mean(x^2) + epsilon).
+
+    Args:
+        x: [..., D] - input tensor, bf16
+        gamma: [D] - scale parameter, bfloat16
+        epsilon: float
+
+    Returns:
+        [..., D] - normalized tensor, bf16
     """
     x_f = x.float()
     rms = torch.sqrt(torch.mean(x_f ** 2, dim=-1, keepdim=True) + epsilon)
@@ -245,65 +244,50 @@ def rms_norm(x, gamma, epsilon):
 def apply_rope(x, rope_cos, rope_sin):
     """
     Apply RoPE with pre-indexed sin/cos.
+
+    Args:
+        x: [..., Dr] - input tensor, bf16
+        rope_cos: [..., Dr] - cosine values, bfloat16
+        rope_sin: [..., Dr] - sine values, bfloat16
+
+    Returns:
+        [..., Dr] - rotated tensor, bf16
     """
     cos = rope_cos.float()
     sin = rope_sin.float()
     xf = x.float()
     x1, x2 = xf.chunk(2, dim=-1)
     rotated = torch.cat([-x2, x1], dim=-1)
-    return (xf * cos + rotated * sin).to(x.dtype)
+    return (xf * cos + rotated * sin).bfloat16()
 
 
 def mla_prolog(
-    token_x: torch.Tensor,
-    w_dq: torch.Tensor,
-    w_uq_qr: torch.Tensor,
-    w_uk: torch.Tensor,
-    w_dkv_kr: torch.Tensor,
-    rmsnorm_gamma_cq: torch.Tensor,
-    rmsnorm_gamma_ckv: torch.Tensor,
-    rope_sin: torch.Tensor,
-    rope_cos: torch.Tensor,
-    n_heads: int,
-    rmsnorm_epsilon_cq: float = 1e-5,
-    rmsnorm_epsilon_ckv: float = 1e-5,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    token_x, w_dq, w_uq_qr, w_uk, w_dkv_kr,
+    rmsnorm_gamma_cq, rmsnorm_gamma_ckv,
+    rope_sin, rope_cos, n_heads,
+    rmsnorm_epsilon_cq=1e-5, rmsnorm_epsilon_ckv=1e-5,
+):
     """
-    Multi-Head Latent Attention 前处理
+    MlaProlog golden reference.
 
     Args:
-        token_x: [B, S, He] 输入 hidden states, bfloat16
-        w_dq: [He, Hcq] query 下投影权重, bfloat16
-        w_uq_qr: [Hcq, N*(D+Dr)] query 上投影+RoPE 权重(合并), bfloat16
-        w_uk: [N, D, Hckv] key 上投影权重(吸收到 query 侧), bfloat16
-        w_dkv_kr: [He, Hckv+Dr] KV 下投影+Key RoPE 权重(合并), bfloat16
-        rmsnorm_gamma_cq: [Hcq] c_q 的 RMSNorm gamma, bfloat16
-        rmsnorm_gamma_ckv: [Hckv] c_kv 的 RMSNorm gamma, bfloat16
-        rope_sin: [B, S, Dr] RoPE 正弦(已按位置索引), bfloat16
-        rope_cos: [B, S, Dr] RoPE 余弦(已按位置索引), bfloat16
-        n_heads: 注意力头数 N
-        rmsnorm_epsilon_cq: c_q RMSNorm epsilon
-        rmsnorm_epsilon_ckv: c_kv RMSNorm epsilon
+        token_x: [B, S, He], bf16
+        w_dq: [He, Hcq], bf16
+        w_uq_qr: [Hcq, N*(D+Dr)], bf16
+        w_uk: [N, D, Hckv], bf16
+        w_dkv_kr: [He, Hckv+Dr], bf16
+        rmsnorm_gamma_cq: [Hcq], bf16
+        rmsnorm_gamma_ckv: [Hckv], bf16
+        rope_sin: [B, S, Dr], bf16
+        rope_cos: [B, S, Dr], bf16
+        n_heads: int
+        rmsnorm_epsilon_cq: float
+        rmsnorm_epsilon_ckv: float
 
     Returns:
-        query: [B, S, N, Hckv] 吸收 W_UK 后的 query, bfloat16
-        query_rope: [B, S, N, Dr] query 位置编码, bfloat16
-        c_kv: [B, S, Hckv] 归一化后的压缩 KV, bfloat16
-        k_rope: [B, S, Dr] key 位置编码, bfloat16
+        query [B, S, N, Hckv], query_rope [B, S, N, Dr],
+        c_kv [B, S, Hckv], k_rope [B, S, Dr] — all bf16
     """
-    original_dtype = token_x.dtype
-    _low_prec = original_dtype in (torch.float16, torch.bfloat16)
-    if _low_prec:
-        token_x = token_x.float()
-        w_dq = w_dq.float()
-        w_uq_qr = w_uq_qr.float()
-        w_uk = w_uk.float()
-        w_dkv_kr = w_dkv_kr.float()
-        rmsnorm_gamma_cq = rmsnorm_gamma_cq.float()
-        rmsnorm_gamma_ckv = rmsnorm_gamma_ckv.float()
-        rope_sin = rope_sin.float()
-        rope_cos = rope_cos.float()
-
     B, S, He = token_x.shape
     N = n_heads
     Hckv = w_uk.shape[2]
@@ -311,34 +295,33 @@ def mla_prolog(
     Dr = rope_sin.shape[-1]
 
     # === Query Path ===
-    c_q_raw = torch.matmul(token_x, w_dq)
-    c_q = rms_norm(c_q_raw, rmsnorm_gamma_cq, rmsnorm_epsilon_cq)
-    qr = torch.matmul(c_q, w_uq_qr)
-    qr = qr.reshape(B, S, N, D + Dr)
-    q_c = qr[..., :D]
-    q_r_raw = qr[..., D:]
-    query = torch.einsum('bsnd,ndh->bsnh', q_c, w_uk)
+    # Step 1: c_q_raw = token_x @ W_DQ  (bf16)
+    c_q_raw = torch.matmul(token_x, w_dq)                           # [B, S, Hcq], bf16
+    # Step 2: c_q = RMSNorm(c_q_raw)
+    c_q = rms_norm(c_q_raw, rmsnorm_gamma_cq, rmsnorm_epsilon_cq)   # [B, S, Hcq], bf16
+    # Step 3: qr = c_q @ W_UQ_QR → split + reshape  (bf16)
+    qr = torch.matmul(c_q, w_uq_qr)                                 # [B, S, N*(D+Dr)], bf16
+    qr = qr.reshape(B, S, N, D + Dr)                                # [B, S, N, D+Dr]
+    q_c = qr[..., :D]                                               # [B, S, N, D], bf16
+    q_r_raw = qr[..., D:]                                           # [B, S, N, Dr], bf16
+    # Step 4: q_n = q_c @ W_UK (per-head batched matmul, bf16)
+    query = torch.einsum('bsnd,ndh->bsnh', q_c, w_uk)               # [B, S, N, Hckv], bf16
+    # Step 5: q_r = RoPE(q_r_raw, cos, sin)
     cos_exp = rope_cos.unsqueeze(2).expand(-1, -1, N, -1)
     sin_exp = rope_sin.unsqueeze(2).expand(-1, -1, N, -1)
-    query_rope = apply_rope(q_r_raw, cos_exp, sin_exp)
+    query_rope = apply_rope(q_r_raw, cos_exp, sin_exp)              # [B, S, N, Dr], bf16
 
     # === Key Path ===
-    dkv_kr = torch.matmul(token_x, w_dkv_kr)
-    ckv_raw = dkv_kr[..., :Hckv]
-    kr_raw = dkv_kr[..., Hckv:]
-    c_kv = rms_norm(ckv_raw, rmsnorm_gamma_ckv, rmsnorm_epsilon_ckv)
-    k_rope = apply_rope(kr_raw, rope_cos, rope_sin)
+    # Step 6: dkv_kr = token_x @ W_DKV_KR → split  (bf16)
+    dkv_kr = torch.matmul(token_x, w_dkv_kr)                        # [B, S, Hckv+Dr], bf16
+    ckv_raw = dkv_kr[..., :Hckv]                                    # [B, S, Hckv], bf16
+    kr_raw = dkv_kr[..., Hckv:]                                     # [B, S, Dr], bf16
+    # Step 7: c_kv = RMSNorm(ckv_raw)
+    c_kv = rms_norm(ckv_raw, rmsnorm_gamma_ckv, rmsnorm_epsilon_ckv)  # [B, S, Hckv], bf16
+    # Step 8: k_r = RoPE(kr_raw, cos, sin)
+    k_rope = apply_rope(kr_raw, rope_cos, rope_sin)                   # [B, S, Dr], bf16
 
-    if _low_prec:
-        query = query.to(original_dtype)
-        query_rope = query_rope.to(original_dtype)
-        c_kv = c_kv.to(original_dtype)
-        k_rope = k_rope.to(original_dtype)
-
-    # einsum / slice 可能留下 view, 而输出契约要求 contiguous (issue #146)；
-    # 已连续时 .contiguous() 原样返回, 无额外拷贝
-    return (query.contiguous(), query_rope.contiguous(),
-            c_kv.contiguous(), k_rope.contiguous())
+    return query, query_rope, c_kv, k_rope
 ```
 
 ## 8. 参考文献

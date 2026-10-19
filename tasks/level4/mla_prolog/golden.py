@@ -123,10 +123,7 @@ def mla_prolog(
         c_kv = c_kv.to(original_dtype)
         k_rope = k_rope.to(original_dtype)
 
-    # einsum / slice 可能留下 view, 而输出契约要求 contiguous (issue #146)；
-    # 已连续时 .contiguous() 原样返回, 无额外拷贝
-    return (query.contiguous(), query_rope.contiguous(),
-            c_kv.contiguous(), k_rope.contiguous())
+    return query, query_rope, c_kv, k_rope
 
 
 def get_input(

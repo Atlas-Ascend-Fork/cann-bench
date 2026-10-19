@@ -12,6 +12,7 @@
 # ----------------------------------------------------------------------------------------------------------
 
 import torch
+import numpy as np
 
 """
 MoeGatingTopKSoftmax算子Torch Golden参考实现
@@ -80,5 +81,4 @@ def moe_gating_top_k_softmax(
         finished_expanded = finished.unsqueeze(-1).expand_as(indices)
         indices = torch.where(finished_expanded, num_expert, indices)
 
-    # row_idx 由 transpose 构造, 留下的是 view, 而输出契约要求 contiguous (issue #146)
-    return values, indices.to(torch.int32), row_idx.to(torch.int32).contiguous()
+    return values, indices.to(torch.int32), row_idx.to(torch.int32)

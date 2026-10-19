@@ -12,16 +12,18 @@ CANNBot 是 [CANN](https://hiascend.com/software/cann) 社区的 Infra 智能体
 
 ## 👋 Task Description
 
-评测AI模型生成Ascend C算子代码的能力，按算子复杂度分为4个等级，覆盖算子主流开发范式：
+评测AI模型生成Ascend C算子代码的能力，当前主线为 Season2 的 60 个算子，按算子复杂度分为5个等级。原 53 题已完整归档至 [Season1](archives/season1/README.md)；本轮题集、平台限制及性能数据状态见 [Season2 迁移说明](docs/guide/season2_migration.md)。
 
 - **Level 1**: 基础算子 (Element-wise, Activation)
-  单输入单输出、Elewise操作、无特殊优化，如 Add、Exp、Gelu、Sigmoid、Mish
+  基础逐元素计算，如 Exp、SwiGLU
 - **Level 2**: 中级算子 (Normalization, Reduction, Gather/Scatter)
-  多输入、轻量级Broadcast、需Tiling但策略固定，如 Gather、ApplyAdamW、Softmax
+  多输入、轻量级Broadcast、归约与索引操作，如 Gather、Softmax、ImageResizeNormalize
 - **Level 3**: 高级算子 (Conv, Pooling, MoE)
   多维度归约、多Tiling策略可选，如 TopK、Conv2D、Matmul、NMS
 - **Level 4**: 复杂算子 (Attention, RNN)
-  矩阵运算、多算子融合、复杂数据流，如 FlashAttention、LSTM、GRU
+  矩阵运算、多算子融合、复杂数据流，如 LSTM、SelectiveScan、LinearCrossEntropy
+- **Level 5**: 挑战级算子 (Stateful / Sparse Attention / Tensor Programs)
+  复杂数据依赖、多阶段协同或数据驱动控制流，如 KimiDeltaAttention、LactTttChunk、TensorProgramVm
 
 ## ⚖️ Evaluation
 
@@ -61,7 +63,7 @@ $$
 - **编译失败处理（整批计 0，不隔离/不补救）**：一份提交多算子一起编译（`build.sh`）时，只要编译失败，本次提交相关算子**全部按编译失败计 0 分**，框架汇总编译错误（见 `_compile.log`）但**不隔离失败算子、不修改用户源码**。这样设计是出于**评测并行化的需要**——避免早期"迭代隔离编译"移动/重编用户源码、产生跨算子串行依赖，使各算子可独立并行编译评测。运行时/功能错误仍按用例级隔离。编译失败时评测进程**退出码非零**（供 CI/CD 判定），报告中相关算子记 0 分并附编译错误摘要。详见 [docs/spec/benchmark_spec.md §4.3](docs/spec/benchmark_spec.md)。
   > ⚠️ **提交前请务必本地验证编译通过**（先跑 `bash build.sh` 确认无编译错误，再提交）。只要任一算子编译失败，本次提交涉及的算子会**整批计 0 分**——这是最容易因疏忽而丢分的环节。
 - Level-N 得分 = 该 level 内算子 EachOperatorScore 总和
-- benchmark 总分 = 全部算子 EachOperatorScore（= Level1 + Level2 + Level3 + Level4）总和
+- benchmark 总分 = 全部算子 EachOperatorScore（= Level1 + Level2 + Level3 + Level4 + Level5）总和
 
 ## 🔍 Directory Structure
 
@@ -71,7 +73,9 @@ cann-bench/
 │   ├── level1/             # L1 基础算子（Elementwise / Activation）
 │   ├── level2/             # L2 中级算子（Norm / Reduce / Gather/Scatter）
 │   ├── level3/             # L3 高级算子（Conv / Pool / MoE）
-│   └── level4/             # L4 复杂算子（Attention / RNN）
+│   ├── level4/             # L4 复杂算子（Attention / RNN）
+│   └── level5/             # L5 挑战级算子
+├── archives/season1/tasks/ # 原 53 题及其原始 metadata，非默认评测集合
 ├── bench_lab/              # 实验/孵化区，本地测试通过后转入 tasks
 ├── examples/               # 算子工程样例 & 评测任务样例
 │   ├── aclnn_launch_example/    # ACLNN 自定义算子样例

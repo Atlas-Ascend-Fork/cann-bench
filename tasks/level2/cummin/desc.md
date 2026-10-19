@@ -61,7 +61,8 @@ cann_bench.cummin(Tensor input, int dim) -> (Tensor values, Tensor indices)
 - `dim` 支持负数索引（如 -1 表示最后一维）
 - 累积操作沿指定轴按顺序从前到后进行
 - `values` 的 dtype 与 input 一致；`indices` 固定为 int64
-- 当沿轴存在相等的最小值时，`indices` 保留最先出现的索引位置（与 `torch.cummin` 一致）
+- 当沿轴存在相等的最小值时，`indices` 更新为最新出现的索引位置（相等取较大索引；与 `torch.cummin` CPU 实际行为一致，已实测验证，golden 即按此输出）
+- 特殊值行为（与 `torch.cummin` 一致，已实测验证）：沿轴自首个 NaN 起 `values` 持续输出 NaN、`indices` 停在首个 NaN 的位置；±Inf 按正常大小参与比较（−Inf 为最小值）；比对按 NaN==NaN。
 
 ### 支持范围
 

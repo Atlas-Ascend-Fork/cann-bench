@@ -206,6 +206,41 @@ def validate_index_reduce_output(
     return True, ""
 
 
+def _has_duplicate_indices(idx: torch.Tensor, dim: int) -> bool:
+    if idx.size(dim) <= 1:
+        return False
+    return bool((torch.diff(idx.sort(dim=dim).values, dim=dim) == 0).any())
+
+
+def validate_index_topk_output(
+    x: torch.Tensor, dim: int, idx: torch.Tensor, k: int, largest: bool = True,
+) -> Tuple[bool, str]:
+    """Validate top-k membership when the paired values were transformed (MoE)."""
+    x = x.detach().cpu()
+    idx = idx.detach().cpu().to(torch.int64)
+    dim_n = dim if dim >= 0 else x.dim() + dim
+    if not 0 <= dim_n < x.dim():
+        return False, f"index_gather: dim={dim} 越界"
+    if not 0 < k <= x.size(dim_n):
+        return False, f"index_gather: k={k} 超出输入维度范围"
+    expected_shape = list(x.shape)
+    expected_shape[dim_n] = k
+    if list(idx.shape) != expected_shape:
+        return False, f"index_gather: top-k 索引形状应为 {expected_shape}"
+    if idx.numel() and (int(idx.min()) < 0 or int(idx.max()) >= x.size(dim_n)):
+        return False, "index_gather: top-k 索引越界"
+    if _has_duplicate_indices(idx, dim_n):
+        return False, "index_gather: top-k 索引不能重复"
+    chosen = torch.gather(x, dim_n, idx)
+    boundary = torch.topk(x, k, dim=dim_n, largest=largest).values.narrow(dim_n, k - 1, 1)
+    legal = chosen >= boundary if largest else chosen <= boundary
+    if x.is_floating_point():
+        legal = legal | (torch.isnan(chosen) & torch.isnan(boundary))
+    if not bool(legal.all()):
+        return False, "index_gather: 索引未指向 top-k 元素"
+    return True, ""
+
+
 def validate_index_gather_outputs(
     op_info: Any,
     params: Dict[str, Any],
@@ -232,9 +267,10 @@ def validate_index_gather_outputs(
             continue
 
         src_name = spec.get("input")
-        dim_attr = spec.get("dim_attr", "dim")
+        dim_attr = spec.get("dim_attr")
         val_name = spec.get("value_output")
         reduce = spec.get("value_reduce")
+        topk = bool(spec.get("value_topk"))
 
         x = params.get(src_name) if isinstance(params, dict) else None
         if not isinstance(x, torch.Tensor):
@@ -244,26 +280,62 @@ def validate_index_gather_outputs(
             return False, f"index_gather[{out.name}]: 缺少索引输出 #{i}"
         idx = ai[i]
 
-        if val_name is None and reduce is None:
+        forms = int(val_name is not None) + int(reduce is not None) + int(topk)
+        if forms == 0:
             return False, (f"index_gather[{out.name}]: 须声明 value_output（配对值输出）"
                            f"或 value_reduce（由输入归约得到参考值）之一")
-        if val_name is not None and reduce is not None:
+        if forms > 1:
             return False, (f"index_gather[{out.name}]: value_output 与 value_reduce "
                            f"互斥，不能同时声明")
 
         # dim 是索引校验的必要信息：缺失不静默兜底为 -1（会在错误维度上 gather、
         # 给出错误的通过/失败），直接判失败暴露配置问题。
-        if not isinstance(case_attrs, dict) or dim_attr not in case_attrs:
+        attrs = case_attrs if isinstance(case_attrs, dict) else {}
+        if dim_attr is not None:
+            if dim_attr not in attrs:
+                return False, f"index_gather[{out.name}]: 缺少维度属性 {dim_attr!r}"
+            dim = attrs[dim_attr]
+        elif "dim" in spec:
+            dim = spec["dim"]
+        elif "dim" in attrs:
+            dim = attrs["dim"]
+        else:
             return False, (f"index_gather[{out.name}]: 缺少维度属性 {dim_attr!r}"
                            f"（index_gather 声明的 dim_attr 未在 case attrs 中找到）")
-        dim = case_attrs[dim_attr]
 
-        if reduce is not None:
+        if topk:
+            k_attr = spec.get("k_attr", "k")
+            if k_attr not in attrs:
+                return False, f"index_gather[{out.name}]: 缺少 top-k 属性 {k_attr!r}"
+            largest = bool(attrs.get(spec.get("largest_attr"), spec.get("largest", True)))
+            source = x.detach().cpu()
+            indices = idx.detach().cpu()
+            transform = spec.get("value_transform")
+            if transform is not None:
+                if transform != "softmax":
+                    return False, f"index_gather[{out.name}]: 未知变换 {transform!r}"
+                source = torch.softmax(source, dim=int(dim))
+            mask_name = spec.get("finished_input")
+            finished = params.get(mask_name) if mask_name else None
+            if finished is not None:
+                dim_n = int(dim) if int(dim) >= 0 else x.dim() + int(dim)
+                mask = finished.detach().cpu()
+                if dim_n != x.dim()-1 or mask.dtype != torch.bool or tuple(mask.shape) != tuple(x.shape[:-1]):
+                    return False, f"index_gather[{out.name}]: finished 掩码与输入形状不匹配"
+                if tuple(indices.shape) != tuple(x.shape[:-1]) + (int(attrs[k_attr]),):
+                    return False, f"index_gather[{out.name}]: 索引形状不匹配"
+                if not bool((indices[mask] == x.size(dim_n)).all()):
+                    return False, f"index_gather[{out.name}]: finished 行须返回 num_expert 哨兵"
+                source = source[~mask]
+                indices = indices[~mask]
+                dim = -1
+            ok, msg = validate_index_topk_output(source, int(dim), indices, int(attrs[k_attr]), largest)
+        elif reduce is not None:
             # 纯索引算子（ArgMax/ArgMin）：无配对值输出，参考值由输入沿 dim 归约得到。
             # keepdim 与 dim 不同——它在 schema 里有明确默认值 false，case 不写即为
             # 默认值，故此处缺省不判失败。
             keepdim_attr = spec.get("keepdim_attr")
-            keepdim = bool(case_attrs.get(keepdim_attr, False)) if keepdim_attr else False
+            keepdim = bool(attrs.get(keepdim_attr, False)) if keepdim_attr else False
             ok, msg = validate_index_reduce_output(x, int(dim), idx, reduce, keepdim)
         else:
             if val_name not in name_to_idx:
@@ -272,6 +344,10 @@ def validate_index_gather_outputs(
             if vi >= len(ai) or not isinstance(ai[vi], torch.Tensor):
                 return False, f"index_gather[{out.name}]: 缺少配对值输出 {val_name!r} (#{vi})"
             ok, msg = validate_index_output(x, int(dim), idx, ai[vi])
+            if ok and spec.get("distinct"):
+                idx_cpu = idx.detach().cpu().to(torch.int64)
+                if _has_duplicate_indices(idx_cpu, int(dim)):
+                    return False, f"index_gather[{out.name}]: 索引不能重复"
         if not ok:
             return False, msg
 

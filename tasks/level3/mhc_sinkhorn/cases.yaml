@@ -159,13 +159,13 @@ cases:
   - [1024, 4, 4]
   dtype: [float32]
   attrs: {iter_step: 20, eps: 1.0e-06}
-  value_range: [-.inf, .inf]
-  note: "S-fp32-131KB-inf特殊值-row_max-shift防溢出 | baseline_kernels: MhcSinkhorn×1"
+  value_range: [-5000, 5000]
+  note: "M-float32-极端峰化输入(row-softmax近one-hot) [B:replaced ±inf degenerate]"
 - operator: MhcSinkhorn
   case_id: 20
   input_shape:
   - [1024, 4, 4]
   dtype: [float32]
   attrs: {iter_step: 20, eps: 1.0e-06}
-  value_range: [.nan, .nan]
-  note: "S-fp32-131KB-nan特殊值-精度比对边界 | baseline_kernels: MhcSinkhorn×1"
+  value_range: [-1.0e-04, 1.0e-04]
+  note: "M-float32-近均匀耦合(eps/收敛稳健性) [B:replaced all-NaN degenerate]"

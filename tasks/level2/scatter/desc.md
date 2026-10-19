@@ -84,6 +84,8 @@ cann_bench.scatter(Tensor data, int dim, Tensor indices, Tensor updates, str? re
 - 当 indices 中存在重复索引：
   - `reduce=None`（覆盖模式）：写入顺序与具体实现相关，PyTorch/NPU 均不保证确定性，最终留下来的值可能是任一个对应的 `updates` 元素
   - `reduce='add'/'multiply'/'amax'/'amin'`：聚合结果与顺序无关，且语义等价于 `scatter_reduce_(include_self=True)`
+- **计分 case 约定**：`reduce=None` 的计分 case 保证 `indices` 在目标位置上互不重复（覆盖歧义行为不进入计分）；重复索引仅与各 reduce 聚合模式搭配出现
+- 特殊值行为：reduce=None 时数据仅被写入、不做算术，NaN/±Inf 按位原样保留；reduce 聚合模式下按 IEEE 规则参与运算；比对按 NaN==NaN、Inf 同号匹配。
 
 ### 支持范围
 

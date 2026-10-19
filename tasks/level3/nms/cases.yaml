@@ -25,7 +25,7 @@ cases:
     - 1
   - - 0
     - 1
-  note: S-float32-1K-对齐-iou=0.5
+  note: "S-float32-1K-对齐-iou=0.5 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 2
   input_shape:
@@ -42,7 +42,7 @@ cases:
     - 2
   - - 0
     - 1
-  note: S-float32-4K-对齐-iou=0.3
+  note: "S-float32-4K-对齐-iou=0.3 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 3
   input_shape:
@@ -59,7 +59,7 @@ cases:
     - 3
   - - 0
     - 1
-  note: S-float32-4K-对齐-iou=0.7
+  note: "S-float32-4K-对齐-iou=0.7 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 4
   input_shape:
@@ -76,7 +76,7 @@ cases:
     - 10
   - - 0
     - 1
-  note: S-float32-4K-对齐-iou=0.1极低阈值
+  note: "S-float32-4K-对齐-iou=0.1极低阈值 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 5
   input_shape:
@@ -93,7 +93,7 @@ cases:
     - 100
   - - 0
     - 1
-  note: S-float32-4K-对齐-iou=0.9极高阈值
+  note: "S-float32-4K-对齐-iou=0.9极高阈值 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 6
   input_shape:
@@ -110,7 +110,7 @@ cases:
     - 1000
   - - 0
     - 1
-  note: S-float32-4K-对齐-iou=0.05-极低阈值
+  note: "S-float32-4K-对齐-iou=0.05-极低阈值 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 7
   input_shape:
@@ -127,7 +127,7 @@ cases:
     - 0.1
   - - 0
     - 1
-  note: S-float32-1K-非对齐-iou=0.5-微小值域
+  note: "S-float32-1K-非对齐-iou=0.5-微小值域 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 8
   input_shape:
@@ -144,7 +144,7 @@ cases:
     - 2
   - - 0
     - 1
-  note: S-float32-1K-质数非对齐-iou=0.3-非对称
+  note: "S-float32-1K-质数非对齐-iou=0.3-非对称 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 9
   input_shape:
@@ -161,7 +161,7 @@ cases:
     - 10
   - - 0
     - 1
-  note: S-float32-2K-非对齐-iou=0.7-非对称
+  note: "S-float32-2K-非对齐-iou=0.7-非对称 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 10
   input_shape:
@@ -178,7 +178,7 @@ cases:
     - 100
   - - 0
     - 1
-  note: S-float32-3K-质数非对齐-iou=0.4
+  note: "S-float32-3K-质数非对齐-iou=0.4 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 11
   input_shape:
@@ -195,7 +195,7 @@ cases:
     - 65504
   - - 0
     - 1
-  note: S-float32-2K-非对齐-float16边界值
+  note: "S-float32-2K-非对齐-float16边界值 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 12
   input_shape:
@@ -212,7 +212,7 @@ cases:
     - 88
   - - 0
     - 1
-  note: S-float32-4K-质数非对齐-float32边界值
+  note: "S-float32-4K-质数非对齐-float32边界值 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 13
   input_shape:
@@ -225,11 +225,11 @@ cases:
   attrs:
     iou_threshold: 0.5
   value_range:
-  - - -.inf
-    - .inf
+  - - -1000000
+    - 1000000
   - - 0
     - 1
-  note: S-float32-3K-质数非对齐-inf特殊值
+  note: "S-float32-3K-质数非对齐-大有限值域 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 14
   input_shape:
@@ -241,12 +241,8 @@ cases:
   - float32
   attrs:
     iou_threshold: 0.5
-  value_range:
-  - - .nan
-    - .nan
-  - - 0
-    - 1
-  note: S-float32-5K-质数非对齐-nan特殊值
+  value_range: [[0, 0.01], [0, 1]]
+  note: "S-float32-4K-对齐-微小有效框(避免零面积IoU 0/0) [B:re-ranged from [0,1e-6] degenerate boxes] [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 15
   input_shape:
@@ -260,10 +256,10 @@ cases:
     iou_threshold: 0.5
   value_range:
   - - 0
-    - 0
+    - 0.001
   - - 0
-    - 0
-  note: S-float32-4K-质数非对齐-零值
+    - 1.0e-06
+  note: "S-float32-4K-对齐-微小框低置信度 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 16
   input_shape:
@@ -280,7 +276,7 @@ cases:
     - 0.5
   - - 0
     - 1
-  note: S-float32-512-非对齐-iou=0.2-微小值域
+  note: "S-float32-512-非对齐-iou=0.2-微小值域 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 17
   input_shape:
@@ -297,7 +293,7 @@ cases:
     - 3
   - - 0
     - 1
-  note: S-float32-2K-非对齐-iou=0.8-非对称
+  note: "S-float32-2K-非对齐-iou=0.8-非对称 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 18
   input_shape:
@@ -314,7 +310,7 @@ cases:
     - 1000
   - - 0
     - 1
-  note: S-float32-4K-非对齐-iou=0.35-大值域
+  note: "S-float32-4K-非对齐-iou=0.35-大值域 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 19
   input_shape:
@@ -331,7 +327,7 @@ cases:
     - 0.2
   - - 0
     - 1
-  note: S-float32-4K-对齐-iou=0.45-微小值域
+  note: "S-float32-4K-对齐-iou=0.45-微小值域 [constraint:distinct-scores (D9.3; F1 generator)]"
 - operator: NMS
   case_id: 20
   input_shape:
@@ -348,4 +344,4 @@ cases:
     - 40
   - - 0
     - 1
-  note: S-float32-7K-质数非对齐-iou=0.55-非对称中值域
+  note: "S-float32-4K-对齐-iou=0.55-非对称中值域 [constraint:distinct-scores (D9.3; F1 generator)]"

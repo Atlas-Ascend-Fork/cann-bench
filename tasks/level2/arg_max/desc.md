@@ -62,6 +62,7 @@ cann_bench.arg_max(Tensor input, int dim, bool keepdim=False) -> Tensor indices
 - `dim` 支持负数索引（如 -1 表示最后一维）
 - `indices` dtype 固定为 int64
 - 当 `dim` 维上存在多个相同的最大值时，返回第一个（最小索引）出现的位置（与 `torch.argmax` 一致）
+- 特殊值行为（与 `torch.argmax` 一致，已实测验证）：切片含 NaN 时 NaN 视为最大值，返回首个 NaN 的索引；±Inf 按正常大小参与比较。
 
 ### 支持范围
 

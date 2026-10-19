@@ -59,7 +59,7 @@ def scan_golden_operators(tasks_root: Path, operator_filter: list = None, level_
     """
     operators = []
     for proto_path in sorted(tasks_root.rglob("proto.yaml")):
-        rel_path = str(proto_path.parent.relative_to(tasks_root))
+        rel_path = proto_path.parent.relative_to(tasks_root).as_posix()
 
         # 读取 proto.yaml
         with open(proto_path, "r", encoding="utf-8") as f:

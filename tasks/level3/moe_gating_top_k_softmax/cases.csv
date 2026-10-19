@@ -18,4 +18,4 @@ MoeGatingTopKSoftmax,16,"[[512, 16]]","[""bfloat16""]","{""k"": 1}","[[-1, 1]]",
 MoeGatingTopKSoftmax,17,"[[2048, 256]]","[""float16""]","{""k"": 8}","[[-65504, 65504]]",M-float16-2D-边界值范围-tokens2048-experts256-k8 | baseline_kernels: MoeGatingTopKSoftmax×1
 MoeGatingTopKSoftmax,18,"[[4096, 128]]","[""float32""]","{""k"": 16}","[[-88, 88]]",M-float32-2D-float32边界值-tokens4096-experts128-k16 | baseline_kernels: MoeGatingTopKSoftmax×1
 MoeGatingTopKSoftmax,19,"[[1024, 32]]","[""float16""]","{""k"": 4}","[[-0.01, 0.01]]",S-float16-2D-微小值域-tokens1024-experts32-k4 | baseline_kernels: MoeGatingTopKSoftmax×1
-MoeGatingTopKSoftmax,20,"[[512, 64]]","[""bfloat16""]","{""k"": 8}","[[0, 0]]",XS-bfloat16-2D-零值输入-tokens512-experts64-k8 | baseline_kernels: MoeGatingTopKSoftmax×1
+MoeGatingTopKSoftmax,20,"[[512, 64]]","[""bfloat16""]","{""k"": 8}","[[-1, 1]]",XS-bfloat16-2D-常规值域-tokens512-experts64-k8 [R:replaced all-zero all-tie degenerate] | baseline_kernels: MoeGatingTopKSoftmax×1

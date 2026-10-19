@@ -226,10 +226,8 @@ cases:
     pads: [0, 0, 0, 0]
     ceil_mode: false
     data_format: NHWC
-  value_range:
-  - [-.inf, .inf]
-  - [-.inf, .inf]
-  note: S-float16-500K-非对齐-inf特殊值
+  value_range: [[-30000, 30000], [-30000, 30000]]
+  note: "M-float16-宽值域max比较(x+w和值<fp16上限) [B:replaced ±inf degenerate]"
 - operator: Dilation2D
   case_id: 14
   input_shape:
@@ -243,10 +241,8 @@ cases:
     pads: [0, 0, 0, 0]
     ceil_mode: false
     data_format: NHWC
-  value_range:
-  - [.nan, .nan]
-  - [.nan, .nan]
-  note: S-float16-5K-质数非对齐-nan特殊值
+  value_range: [[-6.0e-05, 6.0e-05], [-6.0e-05, 6.0e-05]]
+  note: "S-float16-次正规密集max比较 [B:replaced all-NaN degenerate]"
 - operator: Dilation2D
   case_id: 15
   input_shape:

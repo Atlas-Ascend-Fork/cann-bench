@@ -62,4 +62,5 @@ operator:
       input: x
       dim_attr: dim
       value_output: y
+      distinct: true
   schema: top_k(Tensor x, int k, int dim, bool largest) -> (Tensor y, Tensor idx)

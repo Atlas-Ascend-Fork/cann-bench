@@ -61,6 +61,7 @@ cann_bench.swi_glu(Tensor input, int dim=-1) -> Tensor output
 - `dim` 支持负数索引(如 -1 表示最后一维)
 - output dtype 与 input 一致
 - FP16 / BF16 输入内部计算时升精度到 FP32,再 cast 回原 dtype(与 ACLNN 一致)
+- 特殊值行为（计分以 golden——即按公式逐步计算的 torch 参考实现——为准）：NaN 按 IEEE 传播，所有依赖该元素的输出为 NaN；±Inf 按 IEEE 算术参与运算，注意 0×Inf、Inf−Inf 等组合产生 NaN（例如 x=−Inf 时 SiLU 分支即为 −Inf×0=NaN）；比对按 NaN==NaN、Inf 同号匹配。
 
 ### 支持范围
 

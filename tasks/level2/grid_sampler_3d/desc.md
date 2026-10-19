@@ -71,6 +71,7 @@ cann_bench.grid_sampler_3d(Tensor x, Tensor grid, str interpolation_mode="biline
 - grid 中的坐标值通常归一化到 [-1, 1] 范围
 - interpolation_mode 可选 'bilinear'、'nearest'（不支持 'bicubic'，5D 输入 PyTorch 限制）
 - padding_mode 可选 'zeros'、'border'、'reflection'
+- 特殊值行为（与 golden／`torch.nn.functional.grid_sample` 一致）：input 中的 NaN/±Inf 经插值加权按 IEEE 传播；grid 坐标含 NaN/±Inf 时按 IEEE 参与坐标反归一化与越界判定，结果以 golden 为准；比对按 NaN==NaN、Inf 同号匹配。
 
 ### 支持范围
 

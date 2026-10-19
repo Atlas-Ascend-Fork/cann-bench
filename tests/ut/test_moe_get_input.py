@@ -14,7 +14,7 @@
 """MoE 类算子结构化输入契约的 get_input 测试
 
 测试对象：
-1. tasks/level3/moe_finalize_routing/golden.py::get_input
+1. archives/season1/tasks/level3/moe_finalize_routing/golden.py::get_input
    —— expanded_src_to_dst_row 是"源行 -> 展开缓冲区行"的单射映射（drop_less 下是
       完整置换），单区间 value_range 表达不了"互异"，通用生成器有放回采样出大量重复。
 2. tasks/level3/moe_re_routing/golden.py::get_input
@@ -29,8 +29,9 @@ import torch
 from kernel_eval.config import get_project_root
 
 
-def _load(op_rel):
-    path = get_project_root() / "tasks" / op_rel / "golden.py"
+def _load(op_rel, *, archived=False):
+    suite = "archives/season1/tasks" if archived else "tasks"
+    path = get_project_root() / suite / op_rel / "golden.py"
     spec = importlib.util.spec_from_file_location(f"_golden_{op_rel.replace('/', '_')}", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -39,7 +40,8 @@ def _load(op_rel):
 
 @pytest.fixture(scope="module")
 def finalize_routing():
-    return _load("level3/moe_finalize_routing")
+    # Keep historical Golden regression coverage without reintroducing the task.
+    return _load("level3/moe_finalize_routing", archived=True)
 
 
 @pytest.fixture(scope="module")

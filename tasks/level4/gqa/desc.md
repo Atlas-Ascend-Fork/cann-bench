@@ -205,8 +205,7 @@ def gqa(
     attn_output = torch.matmul(attn_weights, v)  # [B, N_kv, G*S, D]
 
     # 转回 [B, S, N_q, D]（N_q 头序 = n_kv * G + g，与展开路径一致）
-    # 末尾 reshape 在 permute 后的布局上仍是 view, 而输出契约要求 contiguous (issue #146)
-    return attn_output.reshape(B, N_kv, G, S, D).permute(0, 3, 1, 2, 4).reshape(B, S, N_q, D).contiguous()
+    return attn_output.reshape(B, N_kv, G, S, D).permute(0, 3, 1, 2, 4).reshape(B, S, N_q, D)
 ```
 
 ## 6. 额外信息

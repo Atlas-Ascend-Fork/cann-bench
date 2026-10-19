@@ -309,11 +309,8 @@ cases:
     group_list: [256, 512, 768, 1024]
     split_item: 0
     transpose_weight: false
-  value_range:
-  - [-.inf, .inf]
-  - [-.inf, .inf]
-  - [-1, 1]
-  note: "bf16-inf特殊值-K=127质数-E=4-M=1024-N=256-带bias | baseline_kernels: GroupedMatmul×1"
+  value_range: [[-100, 100], [-100, 100], [-1, 1]]
+  note: "bf16-宽值域迫使fp32累加-K=127非对齐-E=4 [B:replaced ±inf degenerate] | baseline_kernels: GroupedMatmul×1"
 - operator: GroupedMatmul
   case_id: 18
   input_shape:
@@ -326,10 +323,8 @@ cases:
     group_list: [50, 100, 150, 200]
     split_item: 0
     transpose_weight: false
-  value_range:
-  - [.nan, .nan]
-  - [.nan, .nan]
-  note: "bf16-nan特殊值-E=4-M=200-K=64-N=128-无bias | baseline_kernels: GroupedMatmul×1"
+  value_range: [[-1.5e18, 1.5e18], [-1.5e18, 1.5e18]]
+  note: "bf16-宽动态范围(近bf16上界有限)-E=4-M=200-K=64-N=128-无bias [B:replaced all-NaN degenerate] | baseline_kernels: GroupedMatmul×1"
 - operator: GroupedMatmul
   case_id: 19
   input_shape:
@@ -344,11 +339,8 @@ cases:
     group_list: [16, 32, 48, 64]
     split_item: 0
     transpose_weight: true
-  value_range:
-  - [0, 0]
-  - [0, 0]
-  - [0, 0]
-  note: "fp16-全零-E=4-M=64-K=32-N=32-tw=true-带bias | baseline_kernels: GroupedMatmul×1"
+  value_range: [[-8, 8], [-8, 8], [-64, 64]]
+  note: "fp16-宽值域迫使fp32累加-E=4-M=64-K=32-N=32-tw=true-带bias [B:replaced all-zero degenerate] | baseline_kernels: GroupedMatmul×1"
 - operator: GroupedMatmul
   case_id: 20
   input_shape:

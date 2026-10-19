@@ -632,36 +632,11 @@ cases:
   note: "S-micro-dequant-scale-M=512-E=4-两端scale=1e-4到1e-3-微小反量化 | baseline_kernels: TransData×1 + GroupedMatmulSwigluQuantV2×1"
 - operator: GroupedMatmulSwigluQuant
   case_id: 19
-  input_shape:
-  - - 512
-    - 1024
-  - - 4
-    - 1024
-    - 1024
-  - - 4
-    - 1024
-  - - 512
-  dtype:
-  - int8
-  - int8
-  - float32
-  - float32
-  attrs:
-    group_list:
-    - 128
-    - 256
-    - 384
-    - 512
-  value_range:
-  - - -128
-    - 127
-  - - -128
-    - 127
-  - - 0.01
-    - 0.1
-  - - 0.01
-    - 0.1
-  note: "S-large-dequant-scale-M=512-E=4-两端scale=0.01到0.1-大反量化 | baseline_kernels: TransData×1 + GroupedMatmulSwigluQuantV2×1"
+  input_shape: [[1024, 512], [8, 512, 2048], [8, 2048], [1024]]
+  dtype: [int8, int8, float32, float32]
+  attrs: {group_list: [128, 256, 384, 512, 640, 768, 896, 1024]}
+  value_range: [[-128, 127], [-128, 127], [0.001, 0.01], [0.001, 0.01]]
+  note: "M-int8-E8-M1024-K512-N2048-去重替换 [R:replaced vr-only dup of c18]"
 - operator: GroupedMatmulSwigluQuant
   case_id: 20
   input_shape:

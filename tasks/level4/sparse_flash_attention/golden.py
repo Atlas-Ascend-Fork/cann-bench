@@ -112,11 +112,9 @@ def sparse_flash_attention(
 
     # 转回原始布局
     if inputLayout == "BSND":
-        out = out.permute(0, 2, 1, 3)   # [B, S1, N1, Dv]
-
-    # permute 只改 stride, 而输出契约要求 contiguous (issue #146)；
-    # BNSD 路径的 einsum 输出本就连续, .contiguous() 原样返回, 无额外拷贝
-    return out.contiguous()
+        return out.permute(0, 2, 1, 3)   # [B, S1, N1, Dv]
+    else:
+        return out                        # [B, N1, S1, Dv]
 
 
 def get_input(

@@ -93,9 +93,9 @@ cases:
   input_shape:
   - [3, 7, 13, 4003]
   dtype: [float32]
-  attrs: {base: 1.0, scale: 2.0, shift: 0.0}
+  attrs: {base: 2.0, scale: 1.4, shift: 0.0}
   value_range: [-88, 88]
-  note: "S-float32-1M-质数非对齐-float32边界值-base=1 | baseline_kernels: Mul×1 + Add×1 + Exp×1"
+  note: "S-float32-1M-质数非对齐-float32上下边界(近溢出+次正规)-base=2-scale=1.4 [B:replaced base=1 degenerate] | baseline_kernels: Mul×1 + Add×1 + Exp×1"
 - operator: Exp
   case_id: 12
   input_shape:
@@ -141,9 +141,9 @@ cases:
   input_shape:
   - [4097, 511]
   dtype: [float16]
-  attrs: {base: 1.0, scale: 0.5, shift: 0.0}
+  attrs: {base: 0.5, scale: 0.01, shift: 0.0}
   value_range: [-1000, 1000]
-  note: "S-float16-2M-非对齐-对称大值域-base=1-scale=0.5 | baseline_kernels: Mul×1 + Add×1 + Exp×1"
+  note: "S-float16-2M-非对齐-对称大值域-base=0.5衰减-scale=0.01 [B:replaced base=1 degenerate] | baseline_kernels: Mul×1 + Add×1 + Exp×1"
 - operator: Exp
   case_id: 18
   input_shape:
@@ -165,6 +165,6 @@ cases:
   input_shape:
   - [2, 3, 17, 1024, 101]
   dtype: [float16]
-  attrs: {base: 1.0, scale: 1.5, shift: 1.0}
+  attrs: {base: 3.0, scale: 0.25, shift: -2.0}
   value_range: [-20, 40]
-  note: "M-float16-10M-非对齐-非对称大值域-base=1-scale=1.5-shift=1 | baseline_kernels: Mul×1 + Add×1 + Exp×1"
+  note: "M-float16-10M-非对齐-非对称值域-base=3-scale=0.25-shift=-2 [B:replaced base=1 degenerate] | baseline_kernels: Mul×1 + Add×1 + Exp×1"
