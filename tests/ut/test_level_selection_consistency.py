@@ -72,6 +72,9 @@ class TestEmptySelectionStillReports:
     def _run_cpu_eval_with_empty_level(monkeypatch, tmp_path):
         import kernel_eval.cli as cli
 
+        (tmp_path / "metadata").mkdir()
+        (tmp_path / "metadata" / "VERSION").write_text("2.0.0\n")
+
         args = cli.create_parser().parse_args([
             "eval", "--device", "cpu", "--task-dir", str(tmp_path), "--level", "5",
         ])

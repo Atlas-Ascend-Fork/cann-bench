@@ -30,6 +30,8 @@ class _ReportGenerator:
 
 @pytest.mark.parametrize(("card_count", "expected_exit_code"), [(0, 1), (1, 0)])
 def test_eval_propagates_npu_setup_failure(monkeypatch, tmp_path, card_count, expected_exit_code):
+    (tmp_path / "metadata").mkdir()
+    (tmp_path / "metadata" / "VERSION").write_text("2.0.0\n")
     args = cli.create_parser().parse_args(["eval", "--device", "npu", "--no-perf"])
     case = SimpleNamespace(
         case_id="level1/dummy_1",
@@ -94,6 +96,8 @@ def test_eval_propagates_npu_setup_failure(monkeypatch, tmp_path, card_count, ex
 
 
 def test_eval_propagates_cpu_simulation_failure(monkeypatch, tmp_path):
+    (tmp_path / "metadata").mkdir()
+    (tmp_path / "metadata" / "VERSION").write_text("2.0.0\n")
     args = cli.create_parser().parse_args(["eval", "--device", "cpu", "--no-perf"])
     monkeypatch.setattr(cli, "get_project_root", lambda: tmp_path)
     monkeypatch.setattr(

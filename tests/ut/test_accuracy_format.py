@@ -33,6 +33,10 @@ from kernel_eval.report.report_generator import (
 class TestSummaryGeneratorAccuracyFormat:
     """测试 summary_generator 对 accuracy 字段的读取"""
 
+    @pytest.fixture(autouse=True)
+    def _score_profile(self, monkeypatch):
+        monkeypatch.setenv("CANN_BENCH_SCORE_WEIGHTS", "2")
+
     def test_mare_mere_from_metadata_nested_format(self):
         """新格式：mare/mere 在 metadata 中，应能正确读取"""
         # 构造一个精度失败的 case

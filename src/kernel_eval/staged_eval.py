@@ -565,6 +565,15 @@ def run(args: argparse.Namespace) -> int:
 
     project_root = get_project_root()
     bench_root, filter_prefix = resolve_task_dir(args.task_dir, project_root)
+    from .base.perf_metric import resolve_perf_metric
+    from .base.score_weights import score_weights_context
+
+    with score_weights_context(bench_root):
+        resolve_perf_metric()
+        return _run_with_score_profile(args, bench_root, filter_prefix)
+
+
+def _run_with_score_profile(args, bench_root, filter_prefix):
     Path(args.reports_dir).mkdir(parents=True, exist_ok=True)
 
     print("[staged_eval] stage 1/3: compile")

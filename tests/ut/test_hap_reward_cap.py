@@ -34,14 +34,14 @@ from kernel_eval.base.perf_metric import (
 )
 
 @pytest.fixture(autouse=True)
-def _pin_season1_weights(monkeypatch):
-    """本文件的数值断言按 season-1 权重档（0.2/0.3/0.5，无 bonus）书写。
+def _pin_1_weights(monkeypatch):
+    """本文件的数值断言按 tasks 1.x 权重档（0.2/0.3/0.5，无 bonus）书写。
 
-    该档作为历史口径永久保留、逐位不变（经 CANN_BENCH_SCORE_WEIGHTS=season1
-    或 weights="season1" 切换）；season-2 默认档的行为由
-    test_score_weights_season2.py 钉死。
+    该档作为历史口径永久保留、逐位不变（经 CANN_BENCH_SCORE_WEIGHTS=1
+    或 weights="1" 切换）；tasks 2.x 档的行为由
+    test_score_weights.py 钉死，内容解析见 test_score_weights_version.py。
     """
-    monkeypatch.setenv("CANN_BENCH_SCORE_WEIGHTS", "season1")
+    monkeypatch.setenv("CANN_BENCH_SCORE_WEIGHTS", "1")
 
 
 

@@ -64,7 +64,7 @@ class TestOperatorScoreInfoImport:
             total_cases=1, passed_cases=1, failed_cases=0, skipped_cases=0,
             results=[], pass_rate=1.0, avg_speedup=2.0,
         )
-        info = ScoringCalculator().calculate_operator_score(op)
+        info = ScoringCalculator(weights="2").calculate_operator_score(op)
         assert isinstance(info, OperatorScoreInfo)
 
 

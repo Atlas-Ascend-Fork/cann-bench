@@ -15,7 +15,7 @@
 CANN 评分模块
 
 包含：
-- 权重常量 (WEIGHT_COMPILATION, WEIGHT_FUNCTION, WEIGHT_PERFORMANCE —— season1
+- 权重常量 (WEIGHT_COMPILATION, WEIGHT_FUNCTION, WEIGHT_PERFORMANCE —— 1
   档的兼容别名；权重档的单一事实来源在 base/score_weights.py)
 - OperatorScoreInfo: 算子级得分信息
 - per_case_sol_score: 单用例 SOL-Score 计算
@@ -27,8 +27,8 @@ CANN 评分模块
 - 单用例性能得分: score_i = (T_baseline - T_HW) / ((T_cand - T_HW) + (T_baseline - T_HW))
 - 单算子综合评分: EachOperatorScore =
       [ w_c · δ_pass + w_b · δ_all + Σ_i δ_acc,i · (w_f + w_p · score_i) / len(cases) ] · 100
-  权重档: season2（默认，现行口径）w_c=0.05, w_f=0.20, w_b=0.05, w_p=0.70；
-  season1（历史档，可切换复算）w_c=0.2, w_f=0.3, w_p=0.5, w_b=0 (sum=1, 单算子满分=100)
+  权重档: 2（tasks 2.x）w_c=0.05, w_f=0.20, w_b=0.05, w_p=0.70；
+  1（历史档，可切换复算）w_c=0.2, w_f=0.3, w_p=0.5, w_b=0 (sum=1, 单算子满分=100)
 """
 
 import logging
@@ -46,14 +46,14 @@ from ..eval.results import EvalOperatorResult  # 直接导入模块，避免循�
 _logger = logging.getLogger(__name__)
 
 
-# === 权重配置（bench.tex §3.5 = season1 档）===
+# === 权重配置（bench.tex §3.5 = 1 档）===
 # 仅作兼容别名保留——权重档的单一事实来源在 base/score_weights.py，
 # aggregate_eq4 未显式传权重时按环境变量 CANN_BENCH_SCORE_WEIGHTS 解析
-# （默认 season2 现行口径；season1 为历史档，可切换用于旧数据复算）。
+# （评测入口从实际题集 VERSION 大版本注入默认档）。
 
-WEIGHT_COMPILATION = 0.2  # w_c (season1)
-WEIGHT_FUNCTION = 0.3     # w_f (season1)
-WEIGHT_PERFORMANCE = 0.5  # w_p (season1)
+WEIGHT_COMPILATION = 0.2  # w_c (1)
+WEIGHT_FUNCTION = 0.3     # w_f (1)
+WEIGHT_PERFORMANCE = 0.5  # w_p (1)
 
 NO_NPU_PERF_ERROR_CODE = "no_npu_kernel_detected"
 NO_NPU_PERF_ERROR = "未检测到 NPU 算子执行，疑似 CPU fallback，反作弊触发。"
@@ -79,7 +79,7 @@ class OperatorScoreInfo:
     compilation_score: float = 0.0
     compile_runtime_fail_cases: int = 0
     function_score: float = 0.0
-    bonus_score: float = 0.0  # 全用例精度通过 bonus（w_b·δ_all·100；season1 档 w_b=0 恒为 0）
+    bonus_score: float = 0.0  # 全用例精度通过 bonus（w_b·δ_all·100；1 档 w_b=0 恒为 0）
     performance_score: float = 0.0
     total_score: float = 0.0  # 单算子综合得分，[0, 100]
     # 调试用：每个用例的 hardware-anchored 分数，None 表示数据不全或未通过精度门
@@ -322,24 +322,24 @@ def aggregate_eq4(
     其中 δ_all = ∏_i δ_acc,i（全部 N=total_cases 个用例精度通过才为 1，
     漏跑视为未通过）；反作弊置零路径同样清零 bonus。
 
-    ``wc/wf/wp/wb`` 传 None（默认）时按 ``weights`` 权重档解析
-    （``base/score_weights.py``）：显式传 ``weights="season2"``，或设环境变量
-    ``CANN_BENCH_SCORE_WEIGHTS=season1``，均未指定时取 ``season2``
-    （0.05/0.20/0.70/0.05，"5 编译 + 20 精度 + 5 全通过 bonus + 70 性能"，
-    season-2 现行口径）。``season1`` 历史档为 0.2/0.3/0.5/0（逐位保留，
-    供旧数据复算）。权重档与单用例公式
-    （eq3 / eq3_log）正交，任意组合均可用。
+    ``wc/wf/wp/wb`` 传 None 时按 ``weights`` 权重档解析：显式
+    ``weights="1"`` / ``weights="2"`` > ``CANN_BENCH_SCORE_WEIGHTS`` >
+    评测入口从实际 bench_root/metadata/VERSION 大版本注入的默认档。
+    无来源时抛 ValueError。档 "1" 为 0.2/0.3/0.5/0，档 "2" 为
+    0.05/0.20/0.70/0.05；显式单项权重优先。与 eq3 / eq3_log 正交。
 
     n_no_perf_pass 仅统计 kernel_details.csv 已产出但无 NPU kernel 的 case
     （疑似 CPU fallback，触发反作弊）。profiler 采集功能异常（未产出 CSV）
     的 case 不计入此参数，由调用方在 calculate_operator_score 中提前识别并
     归入 n_perf_missing，不触发反作弊。
     """
-    profile = resolve_score_weights(weights)
-    wc = profile.wc if wc is None else wc
-    wf = profile.wf if wf is None else wf
-    wp = profile.wp if wp is None else wp
-    wb = profile.wb if wb is None else wb
+    # 完整显式数值权重不依赖默认档，保留外部复算脚本的调用语义。
+    if weights is not None or any(value is None for value in (wc, wf, wp, wb)):
+        profile = resolve_score_weights(weights)
+        wc = profile.wc if wc is None else wc
+        wf = profile.wf if wf is None else wf
+        wp = profile.wp if wp is None else wp
+        wb = profile.wb if wb is None else wb
 
     delta_pass = 1 if compile_passed else 0
     n_func_pass = 0
@@ -447,6 +447,9 @@ class ScoringCalculator:
     def _effective_weights(self):
         """解析当前生效的 (wc, wf, wp, wb)——仅用于展示/分解，聚合在
         aggregate_eq4 内部自行解析（同一规则）。"""
+        explicit = (self.wc, self.wf, self.wp, self.wb)
+        if self.weights is None and all(value is not None for value in explicit):
+            return explicit
         profile = resolve_score_weights(self.weights)
         return (
             profile.wc if self.wc is None else self.wc,

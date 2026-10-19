@@ -55,7 +55,7 @@ class OperatorSummary:
     compilation_score: float = 0.0
     compile_runtime_fail_cases: int = 0
     function_score: float = 0.0
-    bonus_score: float = 0.0  # 全用例精度通过 bonus（w_b·δ_all·100；season1 档 w_b=0 恒为 0）
+    bonus_score: float = 0.0  # 全用例精度通过 bonus（w_b·δ_all·100；1 档 w_b=0 恒为 0）
     performance_score: float = 0.0
     composite_score: float = 0.0  # EachOperatorScore，常规区间 [0, 100]；T_cand<T_HW 的 HAP 奖励可 >100，受 OPERATOR_SCORE_CAP 封顶
     # 可选字段：当算子跑不起来时的原因（编译失败 / 子进程超时或崩溃）。

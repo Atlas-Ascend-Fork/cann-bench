@@ -18,8 +18,8 @@
 - 单算子综合评分: EachOperatorScore =
       [ w_c · δ_pass + w_b · δ_all + Σ_i δ_acc,i · (w_f + w_p · score_i) / len(cases) ] · 100
   权重档（base/score_weights.py，单一事实来源）:
-    season2（默认，season-2 现行口径）: w_c=0.05, w_f=0.20, w_b=0.05（全通过 bonus）, w_p=0.70
-    season1（历史档，可切换复算）: w_c=0.2, w_f=0.3, w_p=0.5, w_b=0
+    2（tasks 2.x）: w_c=0.05, w_f=0.20, w_b=0.05（全通过 bonus）, w_p=0.70
+    1（历史档，可切换复算）: w_c=0.2, w_f=0.3, w_p=0.5, w_b=0
   sum=1, 单算子满分=100；T_cand<T_HW 的 HAP 奖励允许 >100，总分受
   OPERATOR_SCORE_CAP 封顶。权重档与单用例公式（eq3 / eq3_log）正交。
 - Level 得分: 给定 level 标签下所有算子分数之和；总分 = Σ Level 得分
@@ -39,13 +39,13 @@ from ..eval.evaluator import EvalOperatorResult
 _logger = logging.getLogger(__name__)
 
 
-# 权重配置（bench.tex §3.5 = season1 档）。仅作兼容别名保留——权重档的
+# 权重配置（bench.tex §3.5 = 1 档）。仅作兼容别名保留——权重档的
 # 单一事实来源在 base/score_weights.py，aggregate_eq4 未显式传权重时按
-# 环境变量 CANN_BENCH_SCORE_WEIGHTS 解析（默认 season2 现行口径；season1 为
-# 历史档，可切换用于旧数据复算）。
-WEIGHT_COMPILATION = 0.2  # w_c (season1)
-WEIGHT_FUNCTION = 0.3     # w_f (season1)
-WEIGHT_PERFORMANCE = 0.5  # w_p (season1)
+# 环境变量 CANN_BENCH_SCORE_WEIGHTS 解析；评测入口从实际题集 VERSION
+# 大版本注入默认档，无来源时报错。
+WEIGHT_COMPILATION = 0.2  # w_c (1)
+WEIGHT_FUNCTION = 0.3     # w_f (1)
+WEIGHT_PERFORMANCE = 0.5  # w_p (1)
 
 NO_NPU_PERF_ERROR_CODE = "no_npu_kernel_detected"
 NO_NPU_PERF_ERROR = "未检测到 NPU 算子执行，疑似 CPU fallback，反作弊触发。"
@@ -72,7 +72,7 @@ class OperatorScoreInfo:
     compilation_score: float = 0.0
     compile_runtime_fail_cases: int = 0
     function_score: float = 0.0
-    bonus_score: float = 0.0  # 全用例精度通过 bonus（w_b·δ_all·100；season1 档 w_b=0 恒为 0）
+    bonus_score: float = 0.0  # 全用例精度通过 bonus（w_b·δ_all·100；1 档 w_b=0 恒为 0）
     performance_score: float = 0.0
     total_score: float = 0.0  # 单算子综合得分，常规区间 [0, 100]；T_cand<T_HW 的 HAP 奖励可 >100，受 OPERATOR_SCORE_CAP 封顶
     # 调试用：每个用例的 hardware-anchored 分数，None 表示数据不全或未通过精度门
@@ -335,22 +335,18 @@ def aggregate_eq4(
         [ w_c·δ_compile_runtime + w_b·δ_all + Σ_i δ_acc,i (w_f + w_p·score_i) / N ] · 100
 
     其中 δ_all = ∏_i δ_acc,i（全部 N=total_cases 个用例精度通过才为 1，
-    漏跑视为未通过）；反作弊置零路径同样清零 bonus。season1 档 w_b=0，
-    bonus 项恒为 0——season1 口径逐位保留。
+    漏跑视为未通过）；反作弊置零路径同样清零 bonus。1 档 w_b=0，
+    bonus 项恒为 0——1 口径逐位保留。
 
     ``δ_compile_runtime = 0`` when the package/operator cannot be compiled or
     scheduled. After compilation passes, it is computed per case:
     ``(N - n_compile_runtime_fail) / N``. True numerical precision mismatches
     do not reduce this component; shape/interface/runtime errors do.
 
-    **权重档**（``base/score_weights.py``，单一事实来源）：``wc/wf/wp/wb``
-    传 None 时按 ``weights`` 解析——显式传 ``weights="season1"``，或设环境变量
-    ``CANN_BENCH_SCORE_WEIGHTS=season1``（每次调用实时读取），均未指定时取
-    ``season2``（0.05/0.20/0.70/0.05，"5 编译 + 20 精度 + 5 全通过 bonus +
-    70 性能"，season-2 现行口径）。``season1`` 历史档为 0.2/0.3/0.5/0
-    （逐位保留，供旧数据复算）。
-    显式传入的单个权重值优先于权重档。权重档与单用例公式（eq3 / eq3_log）
-    正交，任意组合均可用。
+    **权重档**：显式 ``weights="1"`` / ``weights="2"`` > 环境变量
+    ``CANN_BENCH_SCORE_WEIGHTS`` > 评测入口从实际题集 VERSION 大版本注入
+    的默认档；无来源时报错。档 "1" 为 0.2/0.3/0.5/0，档 "2" 为
+    0.05/0.20/0.70/0.05。显式 wc/wf/wp/wb 优先，单用例公式保持正交。
 
     **F021 设计意图（必读）**：
 
@@ -379,8 +375,8 @@ def aggregate_eq4(
             （按 §3.3 极限按 0 计入性能项，不影响精度项）。
         wc, wf, wp, wb: 权重。None（默认）时按 ``weights`` 权重档解析；
             显式传入的值优先。
-        weights: 权重档名，``"season1"`` / ``"season2"``。None 时读环境变量
-            ``CANN_BENCH_SCORE_WEIGHTS``，再回落 ``season1``。
+        weights: 权重档名，``"1"`` / ``"2"``。None 时读环境变量
+            ``CANN_BENCH_SCORE_WEIGHTS``；评测入口由题集大版本提供默认值，无来源时报错。
         n_no_perf_pass: 精度通过、kernel_details.csv 已产出但无有效 NPU kernel
             的 case 数（疑似 CPU fallback）。这与 score_i=None 的"缺 baseline/T_HW
             锚点"不同：缺锚点只扣该 case 性能分；CSV 已产出但无 NPU kernel 说明
@@ -397,11 +393,13 @@ def aggregate_eq4(
         ``performance_score`` / ``total_score`` / ``per_case_scores``。
         所有分项已乘 100。
     """
-    profile = resolve_score_weights(weights)
-    wc = profile.wc if wc is None else wc
-    wf = profile.wf if wf is None else wf
-    wp = profile.wp if wp is None else wp
-    wb = profile.wb if wb is None else wb
+    # 完整显式数值权重不依赖默认档，保留外部复算脚本的调用语义。
+    if weights is not None or any(value is None for value in (wc, wf, wp, wb)):
+        profile = resolve_score_weights(weights)
+        wc = profile.wc if wc is None else wc
+        wf = profile.wf if wf is None else wf
+        wp = profile.wp if wp is None else wp
+        wb = profile.wb if wb is None else wb
 
     delta_pass = 1 if compile_passed else 0
     n_func_pass = 0
@@ -535,6 +533,9 @@ class ScoringCalculator:
     def _effective_weights(self):
         """解析当前生效的 (wc, wf, wp, wb)——仅用于展示/分解，聚合在
         aggregate_eq4 内部自行解析（同一规则）。"""
+        explicit = (self.wc, self.wf, self.wp, self.wb)
+        if self.weights is None and all(value is not None for value in explicit):
+            return explicit
         profile = resolve_score_weights(self.weights)
         return (
             profile.wc if self.wc is None else self.wc,

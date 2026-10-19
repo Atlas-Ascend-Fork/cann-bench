@@ -158,3 +158,14 @@ def test_changelog_latest_version_matches_version_file():
     latest_changelog_version = version_headers[0]
     assert latest_changelog_version == version_file, \
         f"changelog 最新版本='V{latest_changelog_version}' != VERSION文件='{version_file}'"
+
+@pytest.mark.parametrize('contents', ['2.0.0\n# requires-framework: >=1.0.0\n', '1.1.2\n'])
+def test_runtime_version_reads_version_line_only(tmp_path, monkeypatch, contents):
+    from kernel_eval import _version
+
+    metadata = tmp_path / 'tasks' / 'metadata'
+    metadata.mkdir(parents=True)
+    (metadata / 'VERSION').write_text(contents)
+    monkeypatch.setattr(_version, '_ROOT', str(tmp_path))
+    assert _version._read_version('tasks/metadata/VERSION') == contents.splitlines()[0]
+    assert _version.read_tasks_version(tmp_path / 'tasks') == contents.splitlines()[0]

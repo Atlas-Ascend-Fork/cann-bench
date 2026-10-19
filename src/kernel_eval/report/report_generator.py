@@ -27,7 +27,9 @@ from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, asdict, field
 
 from ..config import Config, get_config
-from .._version import FRAMEWORK_VERSION, TASKS_VERSION
+from .._version import FRAMEWORK_VERSION, read_tasks_version
+from ..base.perf_metric import resolve_perf_metric
+from ..base.score_weights import score_weights_context
 from ..eval.evaluator import EvalCaseResult, EvalOperatorResult
 from .scoring import NO_NPU_PERF_ERROR, ScoringCalculator, OperatorScoreInfo
 from .setup_info import collect_setup_info
@@ -192,9 +194,13 @@ class EvalReport:
     operators: List[OperatorReport]
     summary: Dict[str, Any]
     setup_info: Dict[str, Any] = field(default_factory=dict)
+    score_weight_profile: Optional[str] = None
+    perf_metric: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            'score_weight_profile': self.score_weight_profile,
+            'perf_metric': self.perf_metric,
             'framework_version': self.framework_version,
             'tasks_version': self.tasks_version,
             'eval_code': self.eval_code,
@@ -248,6 +254,11 @@ class ReportGenerator:
 
     def generate(self) -> "EvalReport":
         """生成完整评测报告"""
+        with score_weights_context(self.config.tasks_root) as profile:
+            metric = resolve_perf_metric()
+            return self._generate(profile, metric)
+
+    def _generate(self, profile: str, metric: str) -> "EvalReport":
         # 计算每个算子得分
         operator_reports = []
         score_infos = []
@@ -293,9 +304,17 @@ class ReportGenerator:
             'overall_score': overall_score,
         }
 
+        try:
+            tasks_version = read_tasks_version(self.config.tasks_root)
+        except ValueError:
+            # 显式环境覆盖允许没有 VERSION 的旧数据复算；不能冒用安装包版本。
+            tasks_version = "unknown"
+
         return EvalReport(
+            score_weight_profile=profile,
+            perf_metric=metric,
             framework_version=FRAMEWORK_VERSION,
-            tasks_version=TASKS_VERSION,
+            tasks_version=tasks_version,
             eval_code=self.eval_code,
             timestamp=datetime.now().isoformat(),
             device=self._get_device_info(),

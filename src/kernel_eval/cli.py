@@ -37,6 +37,8 @@ from .base.enums import DifficultyLevel
 from .benches.cann import CannTaskLoader, CannCaseLoader
 from .eval.evaluator import Evaluator, _write_json_atomic
 from .eval.results import EvalOperatorResult
+from .base.score_weights import score_weights_context
+from .base.perf_metric import resolve_perf_metric
 from .report.report_generator import ReportGenerator
 from .utils.path_resolver import resolve_task_dir
 
@@ -787,11 +789,17 @@ def cmd_eval(args):
     # 确保子进程优先被 OOM Kill，主进程存活以恢复部分结果、合成失败结果、生成报告。
 
     project_root = get_project_root()
-    bench_name = getattr(args, 'bench_name', 'cann')
 
     # 解析 --task-dir 参数
     bench_root, filter_prefix = resolve_task_dir(args.task_dir, project_root)
 
+    with score_weights_context(bench_root):
+        resolve_perf_metric()
+        return _eval_with_score_profile(args, bench_root, filter_prefix)
+
+
+def _eval_with_score_profile(args, bench_root, filter_prefix):
+    bench_name = getattr(args, 'bench_name', 'cann')
     # 创建配置
     config = _create_config_from_args(args, bench_root)
 
