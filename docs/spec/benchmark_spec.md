@@ -368,6 +368,16 @@ $$
 
 两式在 T_cand = T_baseline 处同为 0.5、T_cand = T_HW 处同为 1，对 T_cand 单调性一致；差别在远离下界的区间——对数版把"每快 10 倍"映射为等距分差，对实测距下界多个数量级的宽时距算子分辨率更好。切换方式：调用侧显式传 `metric="eq3_log"`，或设环境变量 `CANN_BENCH_PERF_METRIC=eq3_log`；两者均未设置时行为与历史完全一致。正式切换时间与口径由维护者另行公告。
 
+**突破硬件下界（HAP > 1）的奖励分**：T_cand < T_HW 时，两个公式在该区间各有一个位置取决于 baseline 的极点（`eq3` 在 `2·T_HW − T_baseline`，`eq3_log` 在 `T_HW²/T_baseline`），小幅击穿即爆分、更大击穿反而落入无定义（None→0）。因此该区间统一脱离基线锚，按硬件加速比给奖励分：
+
+$$
+\text{score}_i = \min\left(\frac{T_{\text{HW},i}}{T_{\text{cand},i}},\ \text{PER\_CASE\_SCORE\_CAP}\right), \quad T_{\text{cand},i} < T_{\text{HW},i}
+$$
+
+该分支在 T_cand = T_HW 处与两公式的取值 1 连续衔接、对 T_cand 严格单调、与 baseline 无关；`PER_CASE_SCORE_CAP`（当前 10）兜底 t_hw 标定异常。突破下界的提交仍逐例归因核查（见反作弊与人工复核流程）。
+
+**单算子总分封顶**：Eq.4 聚合后 `EachOperatorScore = min(EachOperatorScore, OPERATOR_SCORE_CAP)`（当前 120）——HAP 奖励允许总分越过名义满分 100 以激励真实创新，封顶保证单算子对 Level 分 / 总分的贡献有界；未截断值在结果中以 `total_score_uncapped` 同步输出。两个常数均为维护者可调项。
+
 **单算子综合评分** (bench.tex Eq. 4)：
 
 ```

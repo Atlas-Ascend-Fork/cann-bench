@@ -50,6 +50,16 @@ VALID_PERF_METRICS = (PERF_METRIC_EQ3, PERF_METRIC_EQ3_LOG)
 #: 环境变量名：未显式传 metric 时从这里取默认公式。
 PERF_METRIC_ENV = "CANN_BENCH_PERF_METRIC"
 
+#: 单用例 HAP 奖励封顶（见 ``hap_reward``）。HAP = T_HW / T_cand 达到一个
+#: 量级（10x）以上，几乎必然意味着该用例的 t_hw_us 标定有误，而不是真实
+#: 创新；封顶防止坏锚点通过聚合支配算子总分。数值为维护者可调项。
+PER_CASE_SCORE_CAP = 10.0
+
+#: 单算子综合分封顶（Eq.4 聚合后生效）。名义满分 100，HAP > 1 的奖励
+#: 允许总分突破 100 以激励"快过硬件下界"的合法创新，但以本常数兜底，
+#: 保证单算子分对 Level 分 / 总分的贡献有界。数值为维护者可调项。
+OPERATOR_SCORE_CAP = 120.0
+
 
 def resolve_perf_metric(metric: Optional[str] = None) -> str:
     """解析生效的公式名。
@@ -91,6 +101,24 @@ def eq3_log_score(t_baseline: float, t_cand: float, t_hw: float) -> Optional[flo
     return num / denom
 
 
+def hap_reward(t_cand: float, t_hw: float) -> float:
+    """T_cand < T_HW（突破硬件下界，HAP > 1）区间的奖励分。
+
+    只以 T_HW 为锚：``score = T_HW / T_cand``，封顶 ``PER_CASE_SCORE_CAP``。
+
+    动机（issue #288）：两个公式在 T_cand < T_HW 区间都有极点，且极点位置
+    取决于 baseline——eq3 在 ``2·T_HW − T_baseline``，eq3_log 在
+    ``T_HW² / T_baseline``。基线贴近下界时，小幅击穿即爆分、更大击穿反而
+    落入 None→0，既不单调也不可比。两个极点都位于 T_HW 之下，因此统一改为：
+    一旦 T_cand < T_HW，脱离基线锚，直接按硬件加速比 HAP 给奖励分——
+
+    - 在 T_cand = T_HW 处与两公式的取值 1 连续衔接；
+    - 对 T_cand 严格单调（更快一定更高分）；
+    - 与 baseline 取值无关，不再有可被基线位置操纵的区间。
+    """
+    return min(t_hw / t_cand, PER_CASE_SCORE_CAP)
+
+
 def compute_perf_score(
     t_baseline: float,
     t_cand: float,
@@ -102,8 +130,14 @@ def compute_perf_score(
     前置条件（由调用方守卫保证）：三个锚点均为正、非 NaN。
     返回 None 表示该公式在此锚点组合下无定义（调用方按既有
     None 语义告警并计 0 性能分）。
+
+    T_cand < T_HW（HAP > 1）时两个公式共用 ``hap_reward`` 分支（见其
+    docstring）；该分支使 eq3 / eq3_log 各自的极点区间（均位于 T_HW 之下）
+    不再可达。
     """
     metric = resolve_perf_metric(metric)
+    if t_cand < t_hw:
+        return hap_reward(t_cand, t_hw)
     if metric == PERF_METRIC_EQ3_LOG:
         return eq3_log_score(t_baseline, t_cand, t_hw)
     return eq3_score(t_baseline, t_cand, t_hw)

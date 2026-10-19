@@ -17,7 +17,8 @@
 - 单用例性能得分: score_i = (T_baseline - T_HW) / ((T_cand - T_HW) + (T_baseline - T_HW))
 - 单算子综合评分: EachOperatorScore =
       [ w_c · δ_pass + Σ_i δ_acc,i · (w_f + w_p · score_i) / len(cases) ] · 100
-  权重: w_c=0.2, w_f=0.3, w_p=0.5  (sum=1, 单算子满分=100；T_cand<T_HW 时允许 >100)
+  权重: w_c=0.2, w_f=0.3, w_p=0.5  (sum=1, 单算子满分=100；T_cand<T_HW 的 HAP 奖励
+  允许 >100，总分受 OPERATOR_SCORE_CAP 封顶)
 - Level 得分: 给定 level 标签下所有算子分数之和；总分 = Σ Level 得分
 """
 
@@ -26,7 +27,7 @@ import math
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Tuple
 
-from ..base.perf_metric import compute_perf_score
+from ..base.perf_metric import OPERATOR_SCORE_CAP, compute_perf_score
 from ..base.result import is_compile_runtime_case_failure
 from ..eval.evaluator import EvalOperatorResult
 
@@ -65,7 +66,7 @@ class OperatorScoreInfo:
     compile_runtime_fail_cases: int = 0
     function_score: float = 0.0
     performance_score: float = 0.0
-    total_score: float = 0.0  # 单算子综合得分，常规区间 [0, 100]；T_cand<T_HW 时可 >100（不截断）
+    total_score: float = 0.0  # 单算子综合得分，常规区间 [0, 100]；T_cand<T_HW 的 HAP 奖励可 >100，受 OPERATOR_SCORE_CAP 封顶
     # 调试用：每个用例的 hardware-anchored 分数，None 表示数据不全或未通过精度门
     per_case_scores: List[Optional[float]] = field(default_factory=list)
     score_error_code: Optional[str] = None
@@ -443,12 +444,22 @@ def aggregate_eq4(
     function_score = (n_func_pass * wf / total_cases) * 100.0
     performance_score = (perf_score_sum * wp / total_cases) * 100.0
     total_score = compilation_score + function_score + performance_score
+    # HAP > 1 的奖励分允许 total_score 突破名义满分 100，但以 OPERATOR_SCORE_CAP
+    # 封顶，保证单算子对 Level 分 / 总分的贡献有界；未截断值随结果一并返回。
+    total_score_uncapped = total_score
+    if total_score > OPERATOR_SCORE_CAP:
+        _logger.warning(
+            "aggregate_eq4: %s total_score %.2f 超过 OPERATOR_SCORE_CAP=%.0f，已封顶。",
+            rel_path, total_score_uncapped, OPERATOR_SCORE_CAP,
+        )
+        total_score = OPERATOR_SCORE_CAP
 
     return {
         "compilation_score": compilation_score,
         "function_score": function_score,
         "performance_score": performance_score,
         "total_score": total_score,
+        "total_score_uncapped": total_score_uncapped,
         "per_case_scores": per_case_scores,
         "n_func_pass": n_func_pass,
         "n_no_perf_pass": n_no_perf_pass,
@@ -592,7 +603,7 @@ class ScoringCalculator:
         return sum(info.total_score for info in score_infos)
 
     def calculate_average_score(self, score_infos: List[OperatorScoreInfo]) -> float:
-        """benchmark 平均分 = 总分 / 算子数（常规区间每算子满分约 100，T_cand<T_HW 时可 >100，跨时间可比）。
+        """benchmark 平均分 = 总分 / 算子数（常规区间每算子满分约 100，T_cand<T_HW 时可 >100、受 OPERATOR_SCORE_CAP 封顶，跨时间可比）。
 
         Eq. 5 的总分会随新增算子线性膨胀（每个算子满分 +100），新旧 benchmark
         分数不可比。平均分（normalized to per-operator 100 满分）可以在算子集

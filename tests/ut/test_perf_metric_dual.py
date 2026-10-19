@@ -44,11 +44,13 @@ def _legacy_eq3(t_baseline, t_cand, t_hw):
 class TestDefaultBehaviorUnchanged:
     """默认（不传 metric、不设环境变量）必须与历史逐位一致。"""
 
+    # 注意：仅覆盖 C ≥ H 区间——C < H（HAP > 1）区间由 HAP 奖励分支接管，
+    # 行为见 test_hap_reward_cap.py。
     @pytest.mark.parametrize("b,c,h", [
         (100.0, 100.0, 50.0),
         (100.0, 50.0, 50.0),
         (100.0, 1000.0, 50.0),
-        (15.0, 5.2, 10.0),          # 极点邻域样本（基线贴近下界）
+        (15.0, 12.0, 10.0),         # 基线贴近下界的锚点组合，C≥H 侧
         (3.0, 7.0, 1.0),
     ])
     def test_matches_legacy_literal(self, b, c, h, monkeypatch):
@@ -159,8 +161,9 @@ class TestNonePathPreserved:
     def test_eq3_denom_nonpositive_none(self, monkeypatch):
         monkeypatch.delenv(PERF_METRIC_ENV, raising=False)
         from kernel_eval.benches.cann_scoring import per_case_sol_score
-        # T_baseline ≈ T_HW 且 T_cand 远小于 T_HW → denom ≤ 0
-        assert per_case_sol_score(10.0, 1.0, 10.0) is None
+        # C ≥ H 且 B < H（锚点标定可疑）仍可触发 denom ≤ 0 → None；
+        # C < H 的组合已由 HAP 奖励分支接管，不再走 None。
+        assert per_case_sol_score(9.5, 10.2, 10.0) is None
 
     def test_log_b_below_h_none(self, monkeypatch):
         monkeypatch.delenv(PERF_METRIC_ENV, raising=False)

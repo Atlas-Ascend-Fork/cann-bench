@@ -34,7 +34,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from ..base.perf_metric import compute_perf_score
+from ..base.perf_metric import OPERATOR_SCORE_CAP, compute_perf_score
 from ..base.scoring import ScoringScheme, CaseScoreInfo
 from ..base.result import PerfResult, is_compile_runtime_case_failure
 from ..eval.results import EvalOperatorResult  # 直接导入模块，避免循环导入
@@ -125,7 +125,8 @@ def per_case_sol_score(
 
     设计取舍：
     - 不对返回值做上界截断——当 T_cand < T_HW 时 score > 1.0 的"超额分"
-      是有意保留的，用以激励算法突破当前硬件下界（单算子分因此可能 > 100）。
+      是有意保留的，用以激励算法突破当前硬件下界（T_cand < T_HW 走 HAP 奖励
+      分支，受 PER_CASE_SCORE_CAP 封顶；单算子分可 >100，受 OPERATOR_SCORE_CAP 封顶）。
     - T_baseline < T_HW 视为基线/T_HW 标定可疑（应在用例侧人工核查），
       但仍计算分数继续输出，仅 warn 一次（per rel_path × 数值组合）。
     - **T_baseline 缺失（≤ 0）但 T_HW 已知时**，按 fallback 规则取
@@ -360,12 +361,22 @@ def aggregate_eq4(
     function_score = (n_func_pass * wf / total_cases) * 100.0
     performance_score = (perf_score_sum * wp / total_cases) * 100.0
     total_score = compilation_score + function_score + performance_score
+    # HAP > 1 的奖励分允许 total_score 突破名义满分 100，但以 OPERATOR_SCORE_CAP
+    # 封顶，保证单算子对 Level 分 / 总分的贡献有界；未截断值随结果一并返回。
+    total_score_uncapped = total_score
+    if total_score > OPERATOR_SCORE_CAP:
+        _logger.warning(
+            "aggregate_eq4: %s total_score %.2f 超过 OPERATOR_SCORE_CAP=%.0f，已封顶。",
+            rel_path, total_score_uncapped, OPERATOR_SCORE_CAP,
+        )
+        total_score = OPERATOR_SCORE_CAP
 
     return {
         "compilation_score": compilation_score,
         "function_score": function_score,
         "performance_score": performance_score,
         "total_score": total_score,
+        "total_score_uncapped": total_score_uncapped,
         "per_case_scores": per_case_scores,
         "n_func_pass": n_func_pass,
         "n_no_perf_pass": n_no_perf_pass,
