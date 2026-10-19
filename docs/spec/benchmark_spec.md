@@ -360,6 +360,14 @@ $$
 
 T_HW 由 `<bench>/metadata/<hardware>.json` 中的 `t_hw_us` 给出，是该用例在对应硬件上的硬件下界（支持 910B2 / 910_93 / 950 等多硬件，按 `BaselineStore` 解析的硬件名加载）；`baseline_perf_us` 同文件同一用例条目下给出。
 
+**对数同构版（评估中，默认不启用）**：公式本体集中在 `src/kernel_eval/base/perf_metric.py`，除上式（`eq3`，默认）外另提供同构的对数版 `eq3_log`：
+
+$$
+\text{score}_i = \frac{\lg(T_{\text{baseline},i} / T_{\text{HW},i})}{\lg(T_{\text{cand},i} / T_{\text{HW},i}) + \lg(T_{\text{baseline},i} / T_{\text{HW},i})}
+$$
+
+两式在 T_cand = T_baseline 处同为 0.5、T_cand = T_HW 处同为 1，对 T_cand 单调性一致；差别在远离下界的区间——对数版把"每快 10 倍"映射为等距分差，对实测距下界多个数量级的宽时距算子分辨率更好。切换方式：调用侧显式传 `metric="eq3_log"`，或设环境变量 `CANN_BENCH_PERF_METRIC=eq3_log`；两者均未设置时行为与历史完全一致。正式切换时间与口径由维护者另行公告。
+
 **单算子综合评分** (bench.tex Eq. 4)：
 
 ```

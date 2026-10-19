@@ -34,6 +34,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..base.perf_metric import compute_perf_score
 from ..base.scoring import ScoringScheme, CaseScoreInfo
 from ..base.result import PerfResult, is_compile_runtime_case_failure
 from ..eval.results import EvalOperatorResult  # 直接导入模块，避免循环导入
@@ -109,8 +110,14 @@ def per_case_sol_score(
     t_cand: float,
     t_hw: float,
     rel_path: Optional[str] = None,
+    metric: Optional[str] = None,
 ) -> Optional[float]:
-    """bench.tex Eq. 3。T_cand 或 T_HW 异常 / 分母 ≤ 0 时返回 None。
+    """bench.tex Eq. 3。T_cand 或 T_HW 异常 / 公式无定义时返回 None。
+
+    公式本体委托 ``base.perf_metric.compute_perf_score``：默认 ``eq3``
+    （减法版，与历史逐位一致）；``metric="eq3_log"`` 或环境变量
+    ``CANN_BENCH_PERF_METRIC=eq3_log`` 切换对数同构版（评估中）。
+    本函数保留全部锚点守卫与日志语义。
 
     注意 Eq.3 是**饱和型**指标，不是加速比（speedup）：它衡量候选逼近硬件
     理论上界 T_HW 的程度，而非比 baseline 快多少倍。baseline 很慢
@@ -141,12 +148,14 @@ def per_case_sol_score(
         t_baseline = _fallback_baseline_from_hw(t_hw)
     elif t_baseline < t_hw:
         _warn_baseline_below_hw(t_baseline, t_hw, rel_path)
-    denom = (t_cand - t_hw) + (t_baseline - t_hw)
-    if denom <= 0:
-        # F057 成因 (b): denom ≤ 0（罕见，但 T_cand < T_HW 且 T_baseline ≈ T_HW 时可能）
+    score = compute_perf_score(t_baseline, t_cand, t_hw, metric=metric)
+    if score is None:
+        # F057 成因 (b): 公式在该锚点组合下无定义——
+        # eq3: denom ≤ 0（罕见，但 T_cand < T_HW 且 T_baseline ≈ T_HW 时可能）；
+        # eq3_log: B ≤ H（lg(B/H) 非正）或对数分母 ≤ 0，同类边界。
         _warn_denom_nonpositive(rel_path, t_baseline, t_cand, t_hw)
         return None
-    return (t_baseline - t_hw) / denom
+    return score
 
 
 def _fallback_baseline_from_hw(t_hw: float) -> float:
@@ -216,9 +225,10 @@ def _warn_denom_nonpositive(
     _DENOM_WARNED.add(key)
     op_prefix = f"[{rel_path}] " if rel_path else ""
     _logger.warning(
-        "%sper_case_sol_score: denom = (T_cand-T_HW) + (T_baseline-T_HW) ≤ 0 "
+        "%sper_case_sol_score: 性能分公式在该锚点组合下无定义 "
         "(T_baseline=%.4f us, T_cand=%.4f us, T_HW=%.4f us)。本 case 性能项 None。"
-        "可能 T_baseline 与 T_HW 几乎相等且 T_cand 远小于 T_HW。",
+        "eq3: denom = (T_cand-T_HW)+(T_baseline-T_HW) ≤ 0（T_baseline 与 T_HW 几乎"
+        "相等且 T_cand 远小于 T_HW）；eq3_log: B ≤ H 或对数分母 ≤ 0。",
         op_prefix, t_baseline, t_cand, t_hw,
     )
 
