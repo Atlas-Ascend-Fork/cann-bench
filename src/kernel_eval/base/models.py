@@ -5,7 +5,7 @@
 # Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # This program is free software, you can redistribute it and/or modify it under the terms and conditions of
 # CANN Open Software License Agreement Version 2.0 (the "License").
-# Please refer to the License for details. You can not use this file except in compliance with the License.
+# Please refer to the License for details. You may not use this file except in compliance with the License.
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
@@ -181,8 +181,10 @@ class TaskSpec:
         return {
             'task_id': self.task_id,
             'name': self.name,
+            'rel_path': self.rel_path,
             'difficulty': self.difficulty.value,
             'description': self.description,
+            'category': self.category,
             'inputs': [inp.to_dict() for inp in self.inputs],
             'outputs': [out.to_dict() for out in self.outputs],
             'attrs': [attr.to_dict() for attr in self.attrs],
