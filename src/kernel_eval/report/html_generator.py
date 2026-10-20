@@ -243,7 +243,7 @@ def _render_bars(report: EvalReport) -> str:
         if op.avg_speedup > 0:
             g['speeds'].append(op.avg_speedup)
 
-    names = {1: 'Level 1', 2: 'Level 2', 3: 'Level 3', 4: 'Level 4'}
+    names = {lv: f'Level {lv}' for lv in lv_groups}
     lv_max = {lv: g['ops'] * 100 for lv, g in lv_groups.items()}
 
     def _bar(lab, pct, val, is_sp=False):

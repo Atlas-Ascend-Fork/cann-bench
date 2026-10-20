@@ -1,6 +1,7 @@
 from html.parser import HTMLParser
 
 from kernel_eval.report.html_generator import (
+    _render_bars,
     _render_level_table,
     _render_operator_tables,
     _render_top_tables,
@@ -83,6 +84,15 @@ def test_operator_table_does_not_duplicate_pass_rate_as_precision():
     assert len(parser.rows) == 1
     assert len(parser.headers[0]) == len(parser.rows[0]) == 9
 
+
+def test_level_bars_render_l4_and_l5():
+    report = _report()
+
+    for level in (4, 5):
+        report.operators[0].rel_path = f"level{level}/foo.py"
+        html = _render_bars(report)
+
+        assert html.count(f"Level {level}") == 3
 
 def test_html_report_escapes_operator_and_category_text(monkeypatch):
     from html import escape
