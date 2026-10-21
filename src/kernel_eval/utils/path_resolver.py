@@ -86,6 +86,9 @@ def resolve_task_dir(
     dir_path = dir_path.resolve()
     project_root = project_root.resolve()
 
+    if not dir_path.is_dir():
+        raise ValueError(f"路径不是目录: {dir_arg}")
+
     # 保留参数语义：调用方可以显式跳过算子目录特征检查。
     if check_operator_dir:
         is_operator_directory(dir_path)
@@ -93,7 +96,7 @@ def resolve_task_dir(
     bench_root = find_bench_root(dir_path, project_root)
 
     try:
-        filter_prefix = str(dir_path.relative_to(bench_root))
+        filter_prefix = dir_path.relative_to(bench_root).as_posix()
     except ValueError:
         filter_prefix = None
 
@@ -116,6 +119,7 @@ def is_operator_directory(dir_path: Path) -> bool:
         是否为算子目录
     """
     from ..base.loaders import OperatorDirMixin
+
     return all((dir_path / f).exists() for f in OperatorDirMixin.REQUIRED_FILES)
 
 
@@ -147,7 +151,9 @@ def find_bench_root(dir_path: Path, project_root: Path) -> Path:
     return bench_lab / rel_to_bench_lab.parts[0]
 
 
-def _find_named_ancestor(dir_path: Path, project_root: Path, name: str) -> Optional[Path]:
+def _find_named_ancestor(
+    dir_path: Path, project_root: Path, name: str
+) -> Optional[Path]:
     current = dir_path
     while current != project_root:
         if current.name == name:

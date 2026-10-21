@@ -25,7 +25,7 @@ path_resolver 模块单元测试
 
 import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from kernel_eval.utils.path_resolver import (
     resolve_task_dir,
@@ -36,6 +36,15 @@ from kernel_eval.utils.path_resolver import (
 
 class TestResolveTaskDir:
     """resolve_task_dir 函数测试"""
+
+    @pytest.mark.parametrize("absolute", [False, True])
+    def test_file_path_is_rejected(self, tmp_path, absolute):
+        case_file = tmp_path / "cases.yaml"
+        case_file.write_text("cases: []\n", encoding="utf-8")
+        argument = str(case_file) if absolute else case_file.name
+
+        with pytest.raises(ValueError, match="不是目录"):
+            resolve_task_dir(argument, tmp_path)
 
     def test_none_argument_returns_default(self):
         """测试 None 参数返回默认 tasks"""
@@ -77,7 +86,7 @@ class TestResolveTaskDir:
         scatter.mkdir(parents=True)
 
         # 创建算子目录特征文件
-        for f in ['proto.yaml', 'cases.yaml', 'golden.py']:
+        for f in ["proto.yaml", "cases.yaml", "golden.py"]:
             (scatter / f).touch()
 
         bench_root, filter_prefix = resolve_task_dir(str(scatter), tmp_path)
@@ -100,7 +109,7 @@ class TestResolveTaskDir:
         """测试不存在的路径抛出 ValueError"""
         project_root = Path("/project")
 
-        with patch.object(Path, 'exists', return_value=False):
+        with patch.object(Path, "exists", return_value=False):
             with pytest.raises(ValueError, match="目录不存在"):
                 resolve_task_dir("nonexistent", project_root)
 
@@ -134,7 +143,7 @@ class TestResolveTaskDir:
         scatter.mkdir(parents=True)
 
         # 创建算子目录特征文件
-        for f in ['proto.yaml', 'cases.yaml', 'golden.py']:
+        for f in ["proto.yaml", "cases.yaml", "golden.py"]:
             (scatter / f).touch()
 
         # check_operator_dir=False，仍然返回正确的路径
@@ -150,7 +159,7 @@ class TestResolveTaskDir:
         pypto_root = tmp_path / "bench_lab" / "pypto_cann_bench"
         exp_dir = pypto_root / "level1" / "exp"
         exp_dir.mkdir(parents=True)
-        for f in ['proto.yaml', 'cases.yaml', 'golden.py']:
+        for f in ["proto.yaml", "cases.yaml", "golden.py"]:
             (exp_dir / f).touch()
 
         bench_root, filter_prefix = resolve_task_dir(
@@ -178,14 +187,14 @@ class TestIsOperatorDirectory:
 
     def test_operator_dir_has_all_files(self, tmp_path):
         """测试包含所有特征文件的目录"""
-        for f in ['proto.yaml', 'cases.yaml', 'golden.py']:
+        for f in ["proto.yaml", "cases.yaml", "golden.py"]:
             (tmp_path / f).touch()
 
         assert is_operator_directory(tmp_path) is True
 
     def test_non_operator_dir_missing_files(self, tmp_path):
         """测试缺少特征文件的目录"""
-        (tmp_path / 'proto.yaml').touch()
+        (tmp_path / "proto.yaml").touch()
         # 缺少 cases.yaml 和 golden.py
 
         assert is_operator_directory(tmp_path) is False
@@ -249,7 +258,7 @@ class TestResolveTaskDirIntegration:
         scatter_dir.mkdir(parents=True)
 
         # 创建算子目录特征文件
-        for f in ['proto.yaml', 'cases.yaml', 'golden.py']:
+        for f in ["proto.yaml", "cases.yaml", "golden.py"]:
             (exp_dir / f).touch()
             (scatter_dir / f).touch()
 
