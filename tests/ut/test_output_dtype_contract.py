@@ -11,8 +11,12 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # ----------------------------------------------------------------------------------------------------------
 
+import csv
+import json
+import runpy
 from pathlib import Path
 
+import pytest
 import torch
 
 from kernel_eval.benches.cann_loader import CannTaskLoader
@@ -105,3 +109,76 @@ def test_multi_output_contracts_check_each_declared_dtype():
         expected_output_dtypes=[[]],
     )
     assert unconstrained.passed
+
+
+def _load_esa_select_topk_spec():
+    bench_lab_root = Path(__file__).resolve().parents[2] / "bench_lab"
+    op_dir = bench_lab_root / "omni-ops_bench" / "esa_select_topk"
+    spec = CannTaskLoader(bench_root=str(bench_lab_root)).get_task(
+        "omni-ops_bench/esa_select_topk"
+    )
+    assert spec is not None
+    return op_dir, spec
+
+
+def test_esa_select_topk_layout_support_matches_cases_and_golden():
+    op_dir, spec = _load_esa_select_topk_spec()
+    with (op_dir / "cases.csv").open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+    layouts = {json.loads(row["attrs"])["input_layout"] for row in rows}
+    assert layouts == {"TND"}
+    assert "TND" in spec.shape_support
+    assert "BSND" not in spec.shape_support
+    assert "PA_BSND" not in spec.shape_support
+
+    golden_module = runpy.run_path(str(op_dir / "golden.py"))
+    query = torch.ones((1, 1, 1), dtype=torch.float16)
+    key = torch.ones((1, 4, 1, 1), dtype=torch.float16)
+    for layout in ("BSND", "PA_BSND"):
+        with pytest.raises(
+            ValueError, match="CPU golden currently supports TND layout"
+        ):
+            golden_module["esa_select_topk"](
+                query,
+                key,
+                blk_size=2,
+                init_blk_num=0,
+                local_blk_num=0,
+                topk=0,
+                input_layout=layout,
+                actual_seq_q_len_optional=[1],
+                actual_seq_k_len_optional=[4],
+                actual_cmp_seq_k_len_optional=[4],
+                compress_blk_size=1,
+            )
+
+
+def test_esa_select_topk_proto_contract_rejects_float_index_output():
+    _, spec = _load_esa_select_topk_spec()
+    expected_dtypes = Evaluator._get_output_dtype_contracts(spec)
+    output_names = [output.name for output in spec.outputs]
+    assert expected_dtypes == [["int32"]]
+
+    evaluator = AccuracyEvaluator()
+    golden = torch.tensor([[[1]]], dtype=torch.int32)
+    for dtype_name in ("float16", "bfloat16", "float32"):
+        candidate = golden.to(getattr(torch, dtype_name))
+        mismatch = evaluator.evaluate(
+            candidate,
+            golden,
+            dtype=dtype_name,
+            expected_output_dtypes=expected_dtypes,
+            output_names=output_names,
+        )
+        assert not mismatch.passed
+        assert "int32" in mismatch.error_msg
+        assert dtype_name in mismatch.error_msg
+
+    matching = evaluator.evaluate(
+        golden.clone(),
+        golden,
+        dtype="int32",
+        expected_output_dtypes=expected_dtypes,
+        output_names=output_names,
+    )
+    assert matching.passed

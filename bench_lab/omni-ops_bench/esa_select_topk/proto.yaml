@@ -12,9 +12,9 @@ operator:
   name: esa_select_topk
   category: SortSelect
   difficulty: L3
-  formula: Selects ESA top-k compressed key blocks for attention prefill/decode.
-  description: Selects ESA top-k compressed key blocks for attention prefill/decode.
-  shape_support: See migrated CSV cases for supported TND/BSND/PA_BSND shapes.
+  formula: ESA top-k selection over compressed key blocks for each query.
+  description: Selects compressed key blocks for ESA attention during prefill and decode.
+  shape_support: Only TND layout is supported; see migrated CSV cases for supported TND shapes.
   attrs:
   - name: blk_size
     type: int
@@ -79,9 +79,6 @@ operator:
   - name: output
     description: Operator output tensors
     dtype:
-    - float16
-    - bfloat16
-    - float32
     - int32
     shape: case dependent
   schema: esa_select_topk(Tensor query, Tensor key, int blk_size=64, int
