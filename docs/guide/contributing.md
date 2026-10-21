@@ -403,7 +403,6 @@ import torch
 import cann_bench
 
 <示例代码>
-```
 y = cann_bench.<op_name>(x, weight, bias, stride, padding, dilation, groups)
 ```
 
