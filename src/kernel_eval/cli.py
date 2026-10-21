@@ -892,6 +892,10 @@ def cmd_list(args):
         operators = task_loader.list_tasks()
         if args.level is not None:
             operators = [op for op in operators if op.get_level_id() == args.level]
+        if args.operator:
+            operators = [
+                op for op in operators if op.name.lower() == args.operator.lower()
+            ]
 
         print(f"\n[{bench_name}] 共 {len(operators)} 个算子:")
         for op in operators[:50]:
