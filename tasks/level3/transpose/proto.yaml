@@ -12,7 +12,7 @@ operator:
   name: Transpose
   category: LayoutTransform
   difficulty: L3
-  formula: y[i0,...,in-1] = x[i_perm[0],...,i_perm[n-1]]
+  formula: y[i0,...,in-1] = x[j0,...,jn-1], j[perm[k]] = i[k]
   description: 对tensor的任意维度进行调换
   shape_support: 输入维度<=8维
   attrs:

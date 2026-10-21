@@ -18,10 +18,10 @@
 ### 数学公式
 
 $$
-y[i_0, ..., i_{n-1}] = x[i_{\text{perm}[0]}, ..., i_{\text{perm}[n-1]}]
+y[i_0, ..., i_{n-1}] = x[j_0, ..., j_{n-1}], \quad j_{\text{perm}[k]} = i_k
 $$
 
-其中 perm 为维度置换顺序数组，指定输出张量各维度对应输入张量的哪个维度。
+其中 perm 为维度置换顺序数组，指定输出张量各维度对应输入张量的哪个维度。输入索引需按 `j[perm[k]] = i[k]` 放回相应维度；例如 `perm=[2, 0, 1]` 时，`y[i0, i1, i2] = x[i1, i2, i0]`。
 
 ## 3. 接口规范
 
@@ -112,20 +112,20 @@ import torch
 Transpose算子Torch Golden参考实现
 
 对tensor的任意维度进行调换
-公式: y[i0,...,in-1] = x[i_perm[0],...,i_perm[n-1]]
+公式: y[i0,...,in-1] = x[j0,...,jn-1], j[perm[k]] = i[k]
 """
 def transpose(
     x: torch.Tensor, perm: list
 ) -> torch.Tensor:
     """
     对tensor的任意维度进行调换
-    
-    公式: y[i0,...,in-1] = x[i_perm[0],...,i_perm[n-1]]
-    
+
+    公式: y[i0,...,in-1] = x[j0,...,jn-1], j[perm[k]] = i[k]
+
     Args:
         x: 输入张量
         perm: 维度置换顺序
-    
+
     Returns:
         输出张量，转置后的结果
     """
