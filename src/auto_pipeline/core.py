@@ -1506,9 +1506,46 @@ class SimpleConfig:
 
 
 def run_from_config(config_path: Path, *, runtime: Optional[Mapping[str, Any]] = None) -> int:
-    cfg = read_yaml_mapping(Path(config_path))
-    entries = run_cases_from_mapping(cfg, config_path=Path(config_path), runtime=runtime)
+    try:
+        cfg = read_yaml_mapping(Path(config_path))
+        entries = run_cases_from_mapping(cfg, config_path=Path(config_path), runtime=runtime)
+    except Exception as exc:
+        _mark_unregistered_run_failed(runtime, exc)
+        raise
     return 0 if entries and all(entry.get("ok") for entry in entries) else 1
+
+
+_PRE_REGISTRATION_ACTIVE_STATUSES = frozenset({"running", "pending"})
+
+
+def _mark_unregistered_run_failed(
+    runtime: Optional[Mapping[str, Any]], exc: BaseException
+) -> None:
+    """Record a failure raised before ``_register_run_start`` could run.
+
+    A background parent registers the run as ``running`` before spawning the
+    child.  If the child cannot even build a ``SimpleConfig`` (unreadable YAML,
+    unsupported keys, missing workspace, invalid timeout...), its traceback only
+    reaches ``background.log`` while the registry stays ``running`` forever, so
+    ``monitor`` keeps watching a dead process.  Mark that already-registered
+    active run as ``error``; foreground runs (no active record) and runs that
+    already finished or were killed keep their state.
+    """
+    run_id = str((runtime or {}).get("run_id") or "")
+    if not run_id:
+        return
+    run = pipeline_state.read_json(pipeline_state.run_file(run_id))
+    if str(run.get("status") or "") not in _PRE_REGISTRATION_ACTIVE_STATUSES:
+        return
+    pipeline_state.update_run(
+        run_id,
+        {
+            "status": "error",
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+            "completed_at": pipeline_state.utc_ts(),
+        },
+    )
 
 
 def run_cases_from_mapping(
