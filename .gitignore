@@ -63,6 +63,13 @@ cann_bench_project/
 # OpenCode 配置
 .opencode/
 
+# BenchSite MCP（token 走本地文件，配置含机器路径，均不入库）
+.mcp.json
+BENCHSITE_API_TOKEN
+
+# BenchSite 在线提交 demo（仅本地验证用，不入库）
+/examples/benchsite_submit_example/
+
 # 编译日志（runtime 产出）
 _compile_logs/
 
@@ -100,3 +107,6 @@ inner/tests/baseline/results/*.json
 # baseline 采集产出（collect_baseline.py 输出，不入主仓）
 scripts/baseline/output/
 pre-commit_reports/
+
+# 评测日志（run_evaluation 产出）
+_compile.log

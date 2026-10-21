@@ -83,6 +83,7 @@ cann-bench/
 │   ├── tasks/                    # 评测任务样例（add/sqrt fixture，验证评测流水线）
 │   ├── tilelang_cann_example/   # TileLang → CANN 算子样例
 │   ├── triton_ascend_cann_example/ # Triton-Ascend → CANN 算子样例
+│   ├── cannbot_dsl_example/     # CANNBot-DSL 算子样例（add/sqrt，对接 examples/tasks 做流水线 smoke 验证）
 │   └── stanfordbench_example/   # Stanford benchmark 样例
 ├── docker/                 # 镜像
 │   ├── eval/               # 评测镜像：docker run 即评测（harness + tasks 冻结在镜像内）
@@ -202,10 +203,11 @@ pip install -r requirements.txt
 1. **ACLNN 算子启动示例**：[examples/aclnn_launch_example/](examples/aclnn_launch_example/)
 2. **直调算子启动示例**：[examples/direct_launch_example/](examples/direct_launch_example/)
 3. **Triton-Ascend submission 示例**：[examples/triton_ascend_cann_example/](examples/triton_ascend_cann_example/)
+4. **CANNBot-DSL 算子示例**：[examples/cannbot_dsl_example/](examples/cannbot_dsl_example/) — 用 CANNBot-DSL 实现 add/sqrt，可对接下方评测任务 fixture 走通整条流水线
 
 **评测任务样例**（教你"怎么评算子"）：
 
-4. **评测任务 fixture**：[examples/tasks/](examples/tasks/) — 提供 Add/Sqrt 两个轻量算子的评测定义（proto.yaml + golden.py + cases.yaml + metadata/），用于验证评测流水线是否正常工作
+5. **评测任务 fixture**：[examples/tasks/](examples/tasks/) — 提供 Add/Sqrt 两个轻量算子的评测定义（proto.yaml + golden.py + cases.yaml + metadata/），用于验证评测流水线是否正常工作
 
 使用自定义算子：
 
