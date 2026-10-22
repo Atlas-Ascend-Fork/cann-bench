@@ -185,6 +185,4 @@ class StanfordMatcher(OperatorMatcherBase):
         Returns:
             TaskSpec 或 None
         """
-        # StanfordBench 算子名直接是 PascalCase，snake_case 需要转换
-        # 简化处理：直接查找
-        return self.find_operator_info(snake_name)
+        return super().find_operator_info_by_snake(snake_name)
