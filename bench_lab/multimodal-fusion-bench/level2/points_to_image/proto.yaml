@@ -18,7 +18,7 @@ operator:
   attrs:
   - name: eps
     type: float
-    default: 1e-6
+    default: 1.0e-6
     description: 深度分母最小值，用于避免除零
   note: 仅执行齐次坐标投影，不做图像边界裁剪和有效性过滤
   inputs:
