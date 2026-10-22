@@ -48,9 +48,9 @@ from ..config import get_config
 _OP_ERROR_LINE_RE = re.compile(
     r"csrc/ops/([A-Za-z0-9_]+)/op_[a-z]+/[^\s:]+\.cpp"
     r"(?:"
-    r"(?::\d+)*:\s*(?:fatal\s+)?error\b"   # 编译器诊断：file.cpp[:line[:col]]: (fatal )?error
+    r"(?::\d+)*:\s*(?:fatal\s+)?error\b"  # 编译器诊断：file.cpp[:line[:col]]: (fatal )?error
     r"|"
-    r"\.o[^\]]*\]\s+Error\s+\d+"           # make：file.cpp.o] Error N
+    r"\.o[^\]]*\]\s+Error\s+\d+"  # make：file.cpp.o] Error N
     r")"
 )
 
@@ -71,9 +71,10 @@ def _detect_opp_path() -> str:
     2. $ASCEND_HOME_PATH/opp（Toolkit 内嵌 OPP）
     3. /usr/local/Ascend/opp（OPP 独立安装默认路径）
     """
+    home = os.environ.get("ASCEND_HOME_PATH", "")
     for base in (
         os.environ.get("ASCEND_OPP_PATH", ""),
-        os.path.join(os.environ.get("ASCEND_HOME_PATH", ""), "opp"),
+        os.path.join(home, "opp") if home else "",
         "/usr/local/Ascend/opp",
     ):
         if base and os.path.isdir(base):
@@ -89,6 +90,7 @@ def _detect_opp_path() -> str:
 def _get_arch_str() -> str:
     """返回当前平台架构字符串，用于拼装 tiling 库路径。"""
     import platform
+
     machine = platform.machine().lower()
     return "aarch64" if machine in ("aarch64", "arm64") else "x86_64"
 
@@ -104,7 +106,14 @@ def _add_vendor_lib_dirs(vendor_path: Path) -> None:
     lib_dirs = [
         vendor_path / "op_api" / "lib",
         vendor_path / "op_impl" / "ai_core" / "tbe" / "op_tiling",
-        vendor_path / "op_impl" / "ai_core" / "tbe" / "op_tiling" / "lib" / "linux" / arch,
+        vendor_path
+        / "op_impl"
+        / "ai_core"
+        / "tbe"
+        / "op_tiling"
+        / "lib"
+        / "linux"
+        / arch,
     ]
     cur = os.environ.get("LD_LIBRARY_PATH", "")
     for lib_dir in lib_dirs:
@@ -119,6 +128,7 @@ def _add_vendor_lib_dirs(vendor_path: Path) -> None:
 @dataclass
 class PackageInfo:
     """包信息"""
+
     source_dir: str
     whl_path: Optional[str] = None
     run_path: Optional[str] = None
@@ -136,6 +146,7 @@ class PackageInfo:
 @dataclass
 class InterfaceInfo:
     """接口信息"""
+
     name: str
     callable: Any
     signature: str = ""
@@ -186,7 +197,9 @@ class PackageManager:
 
         return package_info
 
-    def check_dist_packages(self, source_dir: str) -> Tuple[Optional[str], Optional[str]]:
+    def check_dist_packages(
+        self, source_dir: str
+    ) -> Tuple[Optional[str], Optional[str]]:
         """检查dist目录的whl包和run包
 
         返回: (whl_path, run_path)
@@ -245,26 +258,30 @@ class PackageManager:
         rc, log_text = self._run_build(source_path, log_path)
 
         if rc == 0 and self._wheel_exists(source_path):
-            print(f"[INFO] 编译成功")
+            print("[INFO] 编译成功")
             package_info = self.scan_source_dir(source_dir)
             package_info.compile_errors = {}
             package_info.build_failed = False
             return package_info
 
         # 编译失败：不隔离、不补救、不修改源码 —— 汇总错误，本次提交所有算子计编译失败
-        print(f"[ERROR] 编译失败（rc={rc}），本次提交相关算子按编译失败计 0 分；详见 {log_path}")
-        per_op = self._parse_failing_ops(log_text)               # 能定位到的算子 → 各自错误片段
+        print(
+            f"[ERROR] 编译失败（rc={rc}），本次提交相关算子按编译失败计 0 分；详见 {log_path}"
+        )
+        per_op = self._parse_failing_ops(log_text)  # 能定位到的算子 → 各自错误片段
         tail = "\n".join(log_text.splitlines()[-40:]).strip() or "(无编译日志输出)"
         submission_ops = self._discover_submission_ops(source_path)
 
         compile_errors: Dict[str, str] = {}
         for op in submission_ops:
-            compile_errors[op] = per_op.get(op) or f"build.sh 编译失败，编译日志末尾摘要：\n{tail}"
+            compile_errors[op] = (
+                per_op.get(op) or f"build.sh 编译失败，编译日志末尾摘要：\n{tail}"
+            )
         # 异常布局下未发现 csrc/ops/* 时，至少保留日志能定位到的算子；再不行用整体摘要
         if not compile_errors:
             compile_errors = per_op or {"<build>": f"build.sh 编译失败：\n{tail}"}
 
-        package_info = self.scan_source_dir(source_dir)          # 无 whl → whl_path=None
+        package_info = self.scan_source_dir(source_dir)  # 无 whl → whl_path=None
         package_info.compile_errors = compile_errors
         package_info.build_failed = True
         return package_info
@@ -274,8 +291,11 @@ class PackageManager:
         ops_dir = source_path / "csrc" / "ops"
         if not ops_dir.is_dir():
             return []
-        return sorted(p.name for p in ops_dir.iterdir()
-                      if p.is_dir() and not p.name.startswith((".", "_")))
+        return sorted(
+            p.name
+            for p in ops_dir.iterdir()
+            if p.is_dir() and not p.name.startswith((".", "_"))
+        )
 
     def _run_build(self, source_path: Path, log_path: Path) -> Tuple[int, str]:
         """跑 bash build.sh，把 stdout+stderr 同步写日志文件。
@@ -358,7 +378,7 @@ class PackageManager:
                 cwd=str(run_file.parent),
                 capture_output=True,
                 text=True,
-                timeout=120  # 2分钟超时
+                timeout=120,  # 2分钟超时
             )
 
             if result.returncode != 0:
@@ -368,23 +388,27 @@ class PackageManager:
                 # 解析 l0op::Contiguous 等内置符号，--force 可兜底绕过。
                 first_output = result.stderr or result.stdout
                 if self._run_supports_force(abs_run_path):
-                    print(f"[WARN] run包首次安装失败，尝试 --force 重试: {first_output[:200]}")
+                    print(
+                        f"[WARN] run包首次安装失败，尝试 --force 重试: {first_output[:200]}"
+                    )
                     result = subprocess.run(
-                        [abs_run_path, "--quiet", "--force",
-                         f"--install-path={opp_path}"],
+                        [
+                            abs_run_path,
+                            "--quiet",
+                            "--force",
+                            f"--install-path={opp_path}",
+                        ],
                         cwd=str(run_file.parent),
                         capture_output=True,
                         text=True,
-                        timeout=120
+                        timeout=120,
                     )
 
             if result.returncode != 0:
                 output = result.stderr or result.stdout
-                raise RuntimeError(
-                    f"run包安装失败 (rc={result.returncode}): {output}"
-                )
+                raise RuntimeError(f"run包安装失败 (rc={result.returncode}): {output}")
 
-            print(f"[INFO] run包安装成功")
+            print("[INFO] run包安装成功")
 
             # source set_env.bash 将 LD_LIBRARY_PATH / ASCEND_CUSTOM_OPP_PATH
             # 设到当前进程，确保 dlopen 能找到 libcust_opapi.so
@@ -397,7 +421,9 @@ class PackageManager:
             vendor_str = str(vendor_path)
             cur_opp = os.environ.get("ASCEND_CUSTOM_OPP_PATH", "")
             if vendor_str not in cur_opp:
-                os.environ["ASCEND_CUSTOM_OPP_PATH"] = f"{vendor_str}:{cur_opp}" if cur_opp else vendor_str
+                os.environ["ASCEND_CUSTOM_OPP_PATH"] = (
+                    f"{vendor_str}:{cur_opp}" if cur_opp else vendor_str
+                )
                 print(f"[INFO] 兜底设置 ASCEND_CUSTOM_OPP_PATH={vendor_str}")
 
             return True
@@ -418,8 +444,7 @@ class PackageManager:
         """
         try:
             r = subprocess.run(
-                [run_path, "--help"],
-                capture_output=True, text=True, timeout=10
+                [run_path, "--help"], capture_output=True, text=True, timeout=10
             )
             return "--force" in (r.stdout + r.stderr)
         except Exception:
@@ -445,20 +470,22 @@ class PackageManager:
             vendor_str = str(vendor_path)
             cur_opp = os.environ.get("ASCEND_CUSTOM_OPP_PATH", "")
             if vendor_str not in cur_opp:
-                os.environ["ASCEND_CUSTOM_OPP_PATH"] = f"{vendor_str}:{cur_opp}" if cur_opp else vendor_str
+                os.environ["ASCEND_CUSTOM_OPP_PATH"] = (
+                    f"{vendor_str}:{cur_opp}" if cur_opp else vendor_str
+                )
                 print(f"[INFO] 已设置 ASCEND_CUSTOM_OPP_PATH={vendor_str}（兜底）")
             # 补全 LD_LIBRARY_PATH：op_api/lib + tiling 目录
             _add_vendor_lib_dirs(vendor_path)
             return
 
         content = set_env_path.read_text()
-        for match in re.finditer(r'export\s+(\w+)=(.+)', content):
+        for match in re.finditer(r"export\s+(\w+)=(.+)", content):
             var_name = match.group(1)
             var_value = match.group(2).strip()
             # 展开 ${VAR_NAME} 引用为当前环境变量值
             var_value = re.sub(
-                r'\$\{(\w+)\}',
-                lambda m: os.environ.get(m.group(1), ''),
+                r"\$\{(\w+)\}",
+                lambda m: os.environ.get(m.group(1), ""),
                 var_value,
             )
             os.environ[var_name] = var_value
@@ -494,7 +521,7 @@ class PackageManager:
                 ],
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
             )
 
             if result.stdout:
@@ -510,21 +537,28 @@ class PackageManager:
             # 验证安装位置（诊断步骤，失败不应影响已成功的安装）
             try:
                 verify = subprocess.run(
-                    [sys.executable, "-c",
-                     "import importlib.util; spec = importlib.util.find_spec('cann_bench'); "
-                     "print(spec.origin if spec else 'NOT FOUND')"],
-                    capture_output=True, text=True, timeout=10
+                    [
+                        sys.executable,
+                        "-c",
+                        "import importlib.util; spec = importlib.util.find_spec('cann_bench'); "
+                        "print(spec.origin if spec else 'NOT FOUND')",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
                 )
                 verify_out = verify.stdout.strip()
                 if verify_out == "NOT FOUND":
-                    print(f"[WARN] pip 返回成功但 cann_bench 模块不可被 find_spec 发现；"
-                          f"后续 scan_interfaces 可能失败")
+                    print(
+                        "[WARN] pip 返回成功但 cann_bench 模块不可被 find_spec 发现；"
+                        "后续 scan_interfaces 可能失败"
+                    )
                 elif verify_out:
                     print(f"[INFO] cann_bench 安装位置: {verify_out}")
             except subprocess.TimeoutExpired:
-                print(f"[WARN] cann_bench 安装位置验证超时，已跳过（不影响安装结果）")
+                print("[WARN] cann_bench 安装位置验证超时，已跳过（不影响安装结果）")
 
-            print(f"[INFO] whl包安装成功")
+            print("[INFO] whl包安装成功")
             return True
 
         except subprocess.TimeoutExpired:
@@ -566,11 +600,12 @@ class PackageManager:
             importlib.invalidate_caches()
 
             import cann_bench
+
             cann_bench_imported = True
 
             # 扫描模块属性
             for name in dir(cann_bench):
-                if name.startswith('_'):
+                if name.startswith("_"):
                     continue
 
                 attr = getattr(cann_bench, name)
@@ -578,25 +613,28 @@ class PackageManager:
                     # 获取函数签名
                     try:
                         from inspect import signature
+
                         sig = str(signature(attr))
                     except Exception:
                         sig = ""
 
-                    interfaces.append(InterfaceInfo(
-                        name=name,
-                        callable=attr,
-                        signature=f"{name}{sig}"
-                    ))
+                    interfaces.append(
+                        InterfaceInfo(
+                            name=name, callable=attr, signature=f"{name}{sig}"
+                        )
+                    )
         except ImportError as e:
             cann_bench_import_error = e
             import traceback
+
             print(f"[WARN] cann_bench 导入失败: {e}")
             traceback.print_exc()
 
         # 2. 尝试从 torch.ops.cann_bench 扫描（由 cann_bench 模块注册）
         try:
             import torch
-            if hasattr(torch.ops, 'cann_bench'):
+
+            if hasattr(torch.ops, "cann_bench"):
                 # torch.library 注册的 ops 需要从已扫描的接口或模块推断名称
                 # 如果 cann_bench 已导入，从其模块属性推断
                 for interface in interfaces:
@@ -604,18 +642,22 @@ class PackageManager:
                     if hasattr(torch.ops.cann_bench, op_name):
                         op = getattr(torch.ops.cann_bench, op_name)
                         if callable(op) and op not in [i.callable for i in interfaces]:
-                            interfaces.append(InterfaceInfo(
-                                name=op_name,
-                                callable=op,
-                                signature=f"torch.ops.cann_bench.{op_name}"
-                            ))
+                            interfaces.append(
+                                InterfaceInfo(
+                                    name=op_name,
+                                    callable=op,
+                                    signature=f"torch.ops.cann_bench.{op_name}",
+                                )
+                            )
         except ImportError:
             pass
 
         # 3. 如果两者都没找到，抛出错误
         if not interfaces:
             if not cann_bench_imported:
-                error_detail = f": {cann_bench_import_error}" if cann_bench_import_error else ""
+                error_detail = (
+                    f": {cann_bench_import_error}" if cann_bench_import_error else ""
+                )
                 raise ImportError(
                     f"无法导入 cann_bench 模块{error_detail}，且 torch.ops.cann_bench 中无算子"
                 )
@@ -699,8 +741,10 @@ class PackageManager:
         package_info = self.scan_source_dir(source_dir)
 
         if verbose:
-            print(f"[INFO] 目录结构:")
-            print(f"       - build.sh: {'存在' if package_info.has_build_sh else '不存在'}")
+            print("[INFO] 目录结构:")
+            print(
+                f"       - build.sh: {'存在' if package_info.has_build_sh else '不存在'}"
+            )
             print(f"       - dist目录: {'存在' if package_info.has_dist else '不存在'}")
             if package_info.whl_path:
                 print(f"       - whl包: {Path(package_info.whl_path).name}")
@@ -713,21 +757,23 @@ class PackageManager:
         else:
             # 需要编译
             if not package_info.has_build_sh:
-                raise RuntimeError(f"源码目录无build.sh且无whl包，无法编译")
+                raise RuntimeError("源码目录无build.sh且无whl包，无法编译")
 
-            print(f"[INFO] 无现有whl包，执行编译...")
+            print("[INFO] 无现有whl包，执行编译...")
             package_info = self.build_packages(source_dir, iterative=iterative_compile)
 
         # 编译整体失败：不安装、不扫描接口，直接返回（上层据 compile_errors 计 0 分）
         if getattr(package_info, "build_failed", False):
-            print(f"[ERROR] 编译失败，跳过安装与评测；{len(package_info.compile_errors)} "
-                  f"个算子将按编译失败计 0 分")
+            print(
+                f"[ERROR] 编译失败，跳过安装与评测；{len(package_info.compile_errors)} "
+                f"个算子将按编译失败计 0 分"
+            )
             return [], package_info
 
         # Step 3: 安装前 snapshot Timing API（安全防护）
         guard = APIGuard()
         guard.snapshot()
-        print(f"[INFO] Timing API snapshot 完成")
+        print("[INFO] Timing API snapshot 完成")
 
         # Step 4: 安装包
         if not self.install_packages(package_info):
@@ -744,7 +790,7 @@ class PackageManager:
         matched_operators = self.match_operators(interfaces)
 
         if not matched_operators:
-            print(f"[WARN] 未匹配到tasks 中的算子")
+            print("[WARN] 未匹配到tasks 中的算子")
             return [], package_info
 
         print(f"[INFO] 匹配到 {len(matched_operators)} 个tasks 算子:")
@@ -758,7 +804,7 @@ class PackageManager:
 
         返回: 算子列表
         """
-        print(f"[INFO] 跳过编译安装，扫描已安装的cann_bench")
+        print("[INFO] 跳过编译安装，扫描已安装的cann_bench")
 
         # 扫描接口
         interfaces = self.scan_interfaces()
@@ -771,7 +817,7 @@ class PackageManager:
         matched_operators = self.match_operators(interfaces)
 
         if not matched_operators:
-            print(f"[WARN] 未匹配到tasks 中的算子")
+            print("[WARN] 未匹配到tasks 中的算子")
             return []
 
         print(f"[INFO] 匹配到 {len(matched_operators)} 个tasks 算子:")
