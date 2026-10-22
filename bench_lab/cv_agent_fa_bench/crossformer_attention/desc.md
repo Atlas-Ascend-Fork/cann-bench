@@ -36,7 +36,7 @@ Y = softmax(Q @ K^T / sqrt(D) + optional position_bias) @ V
 ### 算子原型
 
 ```python
-crossformer_attention(Tensor q, Tensor k, Tensor v, Tensor position_bias) -> Tensor output
+crossformer_attention(Tensor q, Tensor k, Tensor v, Tensor? position_bias=None) -> Tensor output
 ```
 
 ### 输入参数说明
@@ -46,7 +46,7 @@ crossformer_attention(Tensor q, Tensor k, Tensor v, Tensor position_bias) -> Ten
 | `q` | Tensor | `float16` | q/k/v [B, H, N, D], optional position_bias [H, N, N]. | q input tensor |
 | `k` | Tensor | `float16` | q/k/v [B, H, N, D], optional position_bias [H, N, N]. | k input tensor |
 | `v` | Tensor | `float16` | q/k/v [B, H, N, D], optional position_bias [H, N, N]. | v input tensor |
-| `position_bias` | Tensor | `float16` | q/k/v [B, H, N, D], optional position_bias [H, N, N]. | position_bias input tensor |
+| `position_bias` | Tensor? | `float16` | `[H, N, N]` | 可选输入；默认 `None`，非空时加到 attention scores |
 
 ### 属性
 
@@ -94,7 +94,9 @@ MARE = max(abs(actual - golden) / (abs(golden) + 1e-7))
 完整 PyTorch 参考实现位于同目录 `golden.py`。正式入口为 schema 同名函数：
 
 ```python
-def crossformer_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, position_bias: torch.Tensor) -> torch.Tensor:
+def crossformer_attention(
+    q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, position_bias: torch.Tensor | None = None
+) -> torch.Tensor:
 ```
 
 该函数内部仅按输入 tensor shape 和正式 attrs 初始化参考 `Model`，然后调用 upstream `Model.forward`。

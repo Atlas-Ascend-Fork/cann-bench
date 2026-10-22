@@ -22,7 +22,7 @@ class Model(nn.Module):
         super().__init__()
 
     def forward(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
-                position_bias: torch.Tensor = None):
+                position_bias: torch.Tensor | None = None):
         B_, H, N, D = q.shape
         scale = D ** -0.5
 
@@ -38,7 +38,9 @@ class Model(nn.Module):
         return output.to(torch.float16)
 
 
-def crossformer_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, position_bias: torch.Tensor) -> torch.Tensor:
+def crossformer_attention(
+    q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, position_bias: torch.Tensor | None = None
+) -> torch.Tensor:
     """Torch golden implementation aligned to the tile2asc reference Model.forward."""
     model = Model()
     return model(q, k, v, position_bias)

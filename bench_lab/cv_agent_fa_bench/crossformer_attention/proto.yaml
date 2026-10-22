@@ -33,15 +33,15 @@ operator:
     - float16
     shape: q/k/v [B, H, N, D], optional position_bias [H, N, N].
   - name: position_bias
-    description: position_bias input tensor
+    description: optional per-head position bias tensor
     dtype:
     - float16
-    shape: q/k/v [B, H, N, D], optional position_bias [H, N, N].
+    shape: '[H, N, N]'
+    optional: true
   outputs:
   - name: output
     description: golden output tensor
     dtype:
     - float16
     shape: defined by the reference forward result
-  schema: crossformer_attention(Tensor q, Tensor k, Tensor v, Tensor position_bias)
-    -> Tensor output
+  schema: crossformer_attention(Tensor q, Tensor k, Tensor v, Tensor? position_bias=None) -> Tensor output
