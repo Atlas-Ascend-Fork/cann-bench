@@ -247,7 +247,11 @@ def is_compile_runtime_failure_type(failure_type: Optional[str]) -> bool:
 
 def is_compile_runtime_case_failure(case_result: Any) -> bool:
     """Return True when a failed case should deduct compile/runtime score."""
-    if getattr(case_result, "success", False):
+    if isinstance(case_result, dict):
+        success = case_result.get("success", False)
+    else:
+        success = getattr(case_result, "success", False)
+    if success:
         return False
 
     failure_type = getattr(case_result, "failure_type", None)

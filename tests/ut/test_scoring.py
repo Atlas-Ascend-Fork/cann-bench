@@ -27,6 +27,7 @@ from kernel_eval.base.result import (
     AccuracyResult,
     FAILURE_TYPE_COMPILE_RUNTIME_ERROR,
     FAILURE_TYPE_PRECISION_MISMATCH,
+    is_compile_runtime_case_failure,
 )
 from kernel_eval.eval.results import EvalCaseResult, EvalOperatorResult
 from kernel_eval.eval.perf_eval import PerfResult
@@ -191,6 +192,14 @@ class TestAggregateEq4:
             case_scores=[(True, 2.0)],
         )
         assert agg["total_score"] > 100.0
+
+
+@pytest.mark.parametrize("case_result", [
+    {"success": True},
+    {"success": True, "accuracy": None},
+])
+def test_successful_dict_is_not_compile_runtime_failure(case_result):
+    assert is_compile_runtime_case_failure(case_result) is False
 
 
 class TestScoringCalculator:
