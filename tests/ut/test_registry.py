@@ -129,3 +129,44 @@ class TestExistingRegistriesInheritBase:
         GoldenLoaderRegistry.register("__test", GoldenLoaderBase)
         assert GoldenLoaderRegistry.is_registered("__test")
         GoldenLoaderRegistry.clear()
+
+
+class TestGetBenchComponents:
+    def test_reuses_task_loader_for_operator_matcher(self, monkeypatch):
+        from types import SimpleNamespace
+
+        from kernel_eval.registry import bench_registry
+
+        config = bench_registry.BenchConfig(
+            name="test",
+            task_loader="test-task-loader",
+            case_loader="test-case-loader",
+            scoring_scheme="test-scoring-scheme",
+            precision_thresholds={"float32": 1e-5},
+        )
+        monkeypatch.setattr(bench_registry, "get_bench_config", lambda _name: config)
+
+        task_loaders = []
+
+        def make_task_loader(name, **kwargs):
+            loader = SimpleNamespace(name=name, kwargs=kwargs)
+            task_loaders.append(loader)
+            return loader
+
+        monkeypatch.setattr(bench_registry, "get_task_loader", make_task_loader)
+        monkeypatch.setattr(bench_registry, "get_case_loader", lambda *_args, **_kwargs: object())
+        monkeypatch.setattr(bench_registry, "get_golden_loader", lambda *_args, **_kwargs: object())
+        monkeypatch.setattr(
+            bench_registry,
+            "get_operator_matcher",
+            lambda _name, operator_loader: SimpleNamespace(operator_loader=operator_loader),
+        )
+        monkeypatch.setattr(bench_registry, "get_scoring_scheme", lambda *_args, **_kwargs: object())
+        monkeypatch.setattr(bench_registry, "get_correctness_checker", lambda *_args, **_kwargs: object())
+
+        components = bench_registry.get_bench_components("test", "/tmp/tasks with space")
+
+        assert len(task_loaders) == 1
+        assert task_loaders[0].kwargs == {"tasks_root": "/tmp/tasks with space"}
+        assert components["task_loader"] is task_loaders[0]
+        assert components["operator_matcher"].operator_loader is components["task_loader"]

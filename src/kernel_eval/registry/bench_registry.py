@@ -200,7 +200,7 @@ def get_bench_components(bench_name: str = 'cann', tasks_root: str = None) -> Di
     operator_loader = config.get_task_loader(**loader_kwargs)
 
     return {
-        'task_loader': config.get_task_loader(**loader_kwargs),
+        'task_loader': operator_loader,
         'case_loader': config.get_case_loader(**loader_kwargs),
         'golden_loader': config.get_golden_loader(**golden_kwargs),
         'operator_matcher': config.get_operator_matcher(operator_loader),
