@@ -1,6 +1,3 @@
-#!/usr/bin/python3
-# coding=utf-8
-
 # ----------------------------------------------------------------------------------------------------------
 # Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # This program is free software, you can redistribute it and/or modify it under the terms and conditions of
@@ -104,7 +101,7 @@ def tbmv(
 
     # 打包解读: 列主序带状, P[b, j] = A_bl(j+b, j)（LOWER）/ A_bl(j, j+b)（UPPER 取 flip）
     # torch [lda, n] 行主序缓冲的 flat 重解释为 (k+1, n)、步长 (1, lda)
-    P = A.reshape(-1).as_strided((min(k + 1, n), n), (1, lda))
+    P = A.reshape(-1).as_strided((k + 1, n), (1, lda))
 
     # 展开为稠密逻辑矩阵（升精度, 供参考计算）
     M = torch.zeros(n, n, dtype=torch.float64)
