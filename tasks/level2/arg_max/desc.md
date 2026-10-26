@@ -44,7 +44,7 @@ cann_bench.arg_max(Tensor input, int dim, bool keepdim=False) -> Tensor indices
 
 | 参数 | Shape | dtype | 描述 |
 |------|-------|-------|------|
-| indices | `keepdim=True` 时与 input 同 rank,dim 位 size=1；`keepdim=False` 时去掉 dim 位 | int64 | 最大值的索引张量 |
+| indices | 非标量输入：`keepdim=True` 时与 input 同 rank，dim 位 size=1；`keepdim=False` 时去掉 dim 位。标量输入：输出 shape 为 `[]`，不受 `keepdim` 影响 | int64 | 最大值的索引张量 |
 
 ### 数据类型
 
@@ -59,7 +59,7 @@ cann_bench.arg_max(Tensor input, int dim, bool keepdim=False) -> Tensor indices
 ### 规则与约束
 
 - 输入支持 0-8 维张量
-- `dim` 支持负数索引（如 -1 表示最后一维）
+- 非标量输入的 `dim` 支持负数索引（如 -1 表示最后一维）；标量输入（rank=0）的 `dim` 可取 `0` 或 `-1`，输出为值为 `0` 的 int64 标量索引
 - `indices` dtype 固定为 int64
 - 当 `dim` 维上存在多个相同的最大值时，返回第一个（最小索引）出现的位置（与 `torch.argmax` 一致）
 - 特殊值行为（与 `torch.argmax` 一致，已实测验证）：切片含 NaN 时 NaN 视为最大值，返回首个 NaN 的索引；±Inf 按正常大小参与比较。
@@ -73,7 +73,7 @@ cann_bench.arg_max(Tensor input, int dim, bool keepdim=False) -> Tensor indices
 | `rank(input)`（输入维度数） | 0 ~ 8 | cases.csv 实测 1 ~ 5 维 |
 | 每个维度大小 `dim_i` | 1 ~ 2097152 | cases.csv 实测最小 2、最大 1,048,583 |
 | 张量总元素数 | 1 ~ 2^30 | cases.csv 实测最大约 67M（8192×8192） |
-| `dim` | -rank(input) ~ rank(input)-1 | 支持负数索引；cases.csv 实测 -1 / 0 / 1 / 2 |
+| `dim` | rank(input) ≥ 1 时为 -rank(input) ~ rank(input)-1；rank(input)=0 时为 `0` 或 `-1` | 支持负数索引；cases.csv 实测 -1 / 0 / 1 / 2 |
 
 ## 4. 精度要求
 
