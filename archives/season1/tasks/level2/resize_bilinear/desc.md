@@ -30,8 +30,10 @@ $$
 
 其中 $\alpha = h - \lfloor h \rfloor$，$\beta = w - \lfloor w \rfloor$。
 
-- **align_corners=true**：输入输出的角点像素对齐，坐标映射为 $h = i \times \frac{H_{in}-1}{H_{out}-1}$
-- **align_corners=false**：坐标映射为 $h = (i + 0.5) \times \frac{H_{in}}{H_{out}} - 0.5$
+- **align_corners=true**：输入输出的角点像素对齐。$H_{out}>1$ 时，坐标映射为 $h = i \times \frac{H_{in}-1}{H_{out}-1}$；$H_{out}=1$ 时取 $h=0$。
+- **align_corners=false**：使用 `output_size` 时，坐标映射为 $h = (i + 0.5) \times \frac{H_{in}}{H_{out}} - 0.5$；使用 `scale_factor` 时，取 $h = (i + 0.5) / \text{scale\_height} - 0.5$。Golden 未启用 `recompute_scale_factor`，不会用取整后的输出尺寸重新计算缩放因子。
+
+宽度坐标 $w$ 按相同规则计算。插值采用边缘值填充：超出输入边界的采样位置取对应边缘像素；等价地，可先将 $h$、$w$ 分别限制到 $[0,H_{in}-1]$、$[0,W_{in}-1]$，再代入上面的双线性权重公式。详见 [PyTorch interpolate 参数说明](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.interpolate.html)。
 
 ## 3. 接口规范
 
@@ -91,7 +93,7 @@ cann_bench.resize_bilinear(Tensor x, int[]? output_size=None, bool align_corners
 约束：
 - 输入张量 rank 严格为 4，shape 为 `(N, C, H, W)`
 - `output_size` 与 `scale_factor` 互斥，必须恰好提供其一；两者长度均固定为 2（高、宽）
-- 输出 shape 的非空间维（N, C）与输入一致，空间维由 `output_size` 或 `[H * scale_factor[0], W * scale_factor[1]]` 计算得到
+- 输出 shape 的非空间维（N, C）与输入一致，空间维由 `output_size` 或 `[floor(H * scale_factor[0]), floor(W * scale_factor[1])]` 计算得到，取整后必须为正
 - 不在本算子范围：1D/3D/5D 输入（linear/trilinear 模式）—— 由 PyTorch `interpolate` 的其它分支负责，不在本基准评测范围内
 
 ## 4. 精度要求
