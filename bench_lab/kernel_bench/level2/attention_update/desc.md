@@ -125,10 +125,27 @@ cann_bench.attention_update(Tensor lse, Tensor local_out, int update_type=0) -> 
 ## 5. 标准 Golden 代码
 
 ```python
-import torch
+#!/usr/bin/python3
+# coding=utf-8
+
+# ----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ----------------------------------------------------------------------------------------------------------
+
 from typing import List
 
-def attention_update(lse: List[torch.Tensor], local_out: List[torch.Tensor], update_type: int = 0):
+import torch
+
+
+def attention_update(
+    lse: List[torch.Tensor], local_out: List[torch.Tensor], update_type: int = 0
+):
     """
     将各 SP 域的局部 lse 和 localOut 更新为全局结果。
 
@@ -156,9 +173,6 @@ def attention_update(lse: List[torch.Tensor], local_out: List[torch.Tensor], upd
     lse_stacked = torch.stack(lse, dim=0)  # [sp, bsh]
     local_out_stacked = torch.stack(local_out, dim=0).float()  # [sp, bsh, head_dim]
 
-    sp = local_out_stacked.shape[0]
-    head_dim = local_out_stacked.shape[-1]
-
     # Step 1: lse_max = max_i(lse_i)
     lse_max, _ = torch.max(lse_stacked, dim=0)  # [bsh]
 
@@ -171,8 +185,8 @@ def attention_update(lse: List[torch.Tensor], local_out: List[torch.Tensor], upd
     lse_out = lse_max + torch.log(lse_sum)  # [bsh]
 
     # Step 4: O = sum_i(O_i * exp(lse_i - lse_m))
-    lse_weight = lse_stacked - lse_out.unsqueeze(0)  # [sp, bsh]
-    lse_weight = torch.exp(lse_weight).unsqueeze(2)  # [sp, bsh, 1]
+    # Normalize shifted exponentials directly to avoid cancellation in lse_i - lse_out.
+    lse_weight = (lse_sub_exp / lse_sum.unsqueeze(0)).unsqueeze(2)  # [sp, bsh, 1]
     out = torch.sum(local_out_stacked * lse_weight, dim=0)  # [bsh, head_dim]
 
     if update_type == 0:
