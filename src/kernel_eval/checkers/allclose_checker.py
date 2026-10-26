@@ -39,6 +39,7 @@ from ..utils.tensor_utils import non_contiguous_reason
 @dataclass
 class AllCloseOutputResult(OutputResult):
     """AllClose 单输出判断结果"""
+
     index: int
     name: str = ""
     dtype: str = ""
@@ -50,38 +51,46 @@ class AllCloseOutputResult(OutputResult):
 
     def to_dict(self) -> Dict[str, Any]:
         d = {
-            'index': self.index,
-            'name': self.name,
-            'dtype': self.dtype,
-            'passed': self.passed,
-            'error_msg': self.error_msg,
-            'mismatch_count': self.mismatch_count,
-            'total_count': self.total_count,
+            "index": self.index,
+            "name": self.name,
+            "dtype": self.dtype,
+            "passed": self.passed,
+            "error_msg": self.error_msg,
+            "mismatch_count": self.mismatch_count,
+            "total_count": self.total_count,
         }
         d.update(self.metadata)
         return d
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> 'AllCloseOutputResult':
+    def from_dict(cls, d: Dict[str, Any]) -> "AllCloseOutputResult":
         """从字典反序列化（to_dict 将 metadata 扁平化到顶层，需回收）"""
-        _KNOWN_KEYS = {'index', 'name', 'dtype', 'passed', 'error_msg', 'mismatch_count', 'total_count'}
+        _KNOWN_KEYS = {
+            "index",
+            "name",
+            "dtype",
+            "passed",
+            "error_msg",
+            "mismatch_count",
+            "total_count",
+        }
         metadata = {k: v for k, v in d.items() if k not in _KNOWN_KEYS}
         return cls(
-            index=d.get('index', 0),
-            name=d.get('name', ''),
-            dtype=d.get('dtype', ''),
-            passed=d.get('passed', True),
-            error_msg=d.get('error_msg', ''),
-            mismatch_count=d.get('mismatch_count', 0),
-            total_count=d.get('total_count', 0),
+            index=d.get("index", 0),
+            name=d.get("name", ""),
+            dtype=d.get("dtype", ""),
+            passed=d.get("passed", True),
+            error_msg=d.get("error_msg", ""),
+            mismatch_count=d.get("mismatch_count", 0),
+            total_count=d.get("total_count", 0),
             metadata=metadata,
         )
 
     def format_summary(self) -> str:
         """格式化摘要（allclose 标准特有展示逻辑）"""
         dtype_str = f"{self.dtype}[{self.name or self.index}]"
-        atol = self.metadata.get('atol', 0)
-        rtol = self.metadata.get('rtol', 0)
+        atol = self.metadata.get("atol", 0)
+        rtol = self.metadata.get("rtol", 0)
         if self.passed:
             return f"{dtype_str}: ✅ (allclose passed, atol={atol}, rtol={rtol})"
         # 结构性失败(形状不匹配 / 布局非连续)在 error_msg 里, 这里必须带出来:
@@ -138,14 +147,18 @@ class AllCloseChecker(CorrectnessChecker):
                 passed=False,
                 error_msg=f"输出数量不匹配: ai={len(ai_list)}, golden={len(golden_list)}",
                 metadata={
-                    'checker_name': 'allclose',
-                    'failure_type': FAILURE_TYPE_COMPILE_RUNTIME_ERROR,
+                    "checker_name": "allclose",
+                    "failure_type": FAILURE_TYPE_COMPILE_RUNTIME_ERROR,
                 },
             )
 
         # 获取阈值
-        atol = custom_thresholds.get('atol', threshold) if custom_thresholds else threshold
-        rtol = custom_thresholds.get('rtol', threshold) if custom_thresholds else threshold
+        atol = (
+            custom_thresholds.get("atol", threshold) if custom_thresholds else threshold
+        )
+        rtol = (
+            custom_thresholds.get("rtol", threshold) if custom_thresholds else threshold
+        )
 
         results: List[AllCloseOutputResult] = []
         all_passed = True
@@ -154,13 +167,15 @@ class AllCloseChecker(CorrectnessChecker):
         for i, (ai, golden) in enumerate(zip(ai_list, golden_list)):
             # 检查是否需要忽略
             if ignore_indices and i in ignore_indices:
-                results.append(AllCloseOutputResult(
-                    index=i,
-                    name=f"output_{i}",
-                    dtype=dtype,
-                    passed=True,
-                    error_msg="(跳过对比)",
-                ))
+                results.append(
+                    AllCloseOutputResult(
+                        index=i,
+                        name=f"output_{i}",
+                        dtype=dtype,
+                        passed=True,
+                        error_msg="(跳过对比)",
+                    )
+                )
                 continue
 
             # 判定顺序 shape -> 布局 -> 落 CPU, 与 compare.py 的 _compare_single_tensor
@@ -169,18 +184,20 @@ class AllCloseChecker(CorrectnessChecker):
             # 形状不匹配直接判失败，避免 torch.allclose 抛异常。比 shape 不碰数据,
             # 不必先落 CPU。
             if ai.shape != golden.shape:
-                results.append(AllCloseOutputResult(
-                    index=i,
-                    name=f"output_{i}",
-                    dtype=dtype,
-                    passed=False,
-                    error_msg=f"形状不匹配: ai={ai.shape}, golden={golden.shape}",
-                    metadata={
-                        'atol': atol,
-                        'rtol': rtol,
-                        'failure_type': FAILURE_TYPE_COMPILE_RUNTIME_ERROR,
-                    },
-                ))
+                results.append(
+                    AllCloseOutputResult(
+                        index=i,
+                        name=f"output_{i}",
+                        dtype=dtype,
+                        passed=False,
+                        error_msg=f"形状不匹配: ai={ai.shape}, golden={golden.shape}",
+                        metadata={
+                            "atol": atol,
+                            "rtol": rtol,
+                            "failure_type": FAILURE_TYPE_COMPILE_RUNTIME_ERROR,
+                        },
+                    )
+                )
                 all_passed = False
                 structural_failure = True
                 continue
@@ -189,18 +206,20 @@ class AllCloseChecker(CorrectnessChecker):
             # 跨设备拷贝会归一化部分非连续张量的 stride, 检查放到之后就漏了。
             layout_error = non_contiguous_reason(ai)
             if layout_error is not None:
-                results.append(AllCloseOutputResult(
-                    index=i,
-                    name=f"output_{i}",
-                    dtype=dtype,
-                    passed=False,
-                    error_msg=layout_error,
-                    metadata={
-                        'atol': atol,
-                        'rtol': rtol,
-                        'failure_type': FAILURE_TYPE_COMPILE_RUNTIME_ERROR,
-                    },
-                ))
+                results.append(
+                    AllCloseOutputResult(
+                        index=i,
+                        name=f"output_{i}",
+                        dtype=dtype,
+                        passed=False,
+                        error_msg=layout_error,
+                        metadata={
+                            "atol": atol,
+                            "rtol": rtol,
+                            "failure_type": FAILURE_TYPE_COMPILE_RUNTIME_ERROR,
+                        },
+                    )
+                )
                 all_passed = False
                 structural_failure = True
                 continue
@@ -213,19 +232,22 @@ class AllCloseChecker(CorrectnessChecker):
             passed = torch.allclose(ai_cpu, golden_cpu, rtol=rtol, atol=atol)
 
             # 计算 mismatch_count
-            diff = torch.abs(ai_cpu - golden_cpu)
-            mismatch_count = int((diff > atol + rtol * torch.abs(golden_cpu)).sum().item()) if ai_cpu.numel() > 0 else 0
+            mismatch_count = int(
+                (~torch.isclose(ai_cpu, golden_cpu, rtol=rtol, atol=atol)).sum().item()
+            )
             total_count = ai_cpu.numel()
 
-            results.append(AllCloseOutputResult(
-                index=i,
-                name=f"output_{i}",
-                dtype=dtype,
-                passed=passed,
-                mismatch_count=mismatch_count,
-                total_count=total_count,
-                metadata={'atol': atol, 'rtol': rtol},
-            ))
+            results.append(
+                AllCloseOutputResult(
+                    index=i,
+                    name=f"output_{i}",
+                    dtype=dtype,
+                    passed=passed,
+                    mismatch_count=mismatch_count,
+                    total_count=total_count,
+                    metadata={"atol": atol, "rtol": rtol},
+                )
+            )
 
             if not passed:
                 all_passed = False
@@ -233,7 +255,9 @@ class AllCloseChecker(CorrectnessChecker):
         # 聚合统计
         agg_mismatch_count = sum(r.mismatch_count for r in results)
         agg_total_count = sum(r.total_count for r in results)
-        agg_mismatch_ratio = agg_mismatch_count / agg_total_count if agg_total_count > 0 else 0.0
+        agg_mismatch_ratio = (
+            agg_mismatch_count / agg_total_count if agg_total_count > 0 else 0.0
+        )
 
         return AccuracyResult(
             passed=all_passed,
@@ -241,19 +265,21 @@ class AllCloseChecker(CorrectnessChecker):
             threshold=None,
             error_msg=None if all_passed else "精度不达标（allclose 失败）",
             metadata={
-                'checker_name': 'allclose',
-                'atol': atol,
-                'rtol': rtol,
-                'mismatch_count': agg_mismatch_count,
-                'total_count': agg_total_count,
-                'mismatch_ratio': agg_mismatch_ratio,
-                'failure_type': (
-                    None if all_passed else
-                    FAILURE_TYPE_COMPILE_RUNTIME_ERROR if structural_failure else
-                    FAILURE_TYPE_PRECISION_MISMATCH
+                "checker_name": "allclose",
+                "atol": atol,
+                "rtol": rtol,
+                "mismatch_count": agg_mismatch_count,
+                "total_count": agg_total_count,
+                "mismatch_ratio": agg_mismatch_ratio,
+                "failure_type": (
+                    None
+                    if all_passed
+                    else FAILURE_TYPE_COMPILE_RUNTIME_ERROR
+                    if structural_failure
+                    else FAILURE_TYPE_PRECISION_MISMATCH
                 ),
             },
         )
 
 
-register_output_result('allclose', AllCloseOutputResult)
+register_output_result("allclose", AllCloseOutputResult)
