@@ -1,3 +1,16 @@
+#!/usr/bin/python3
+# coding=utf-8
+
+# ----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ----------------------------------------------------------------------------------------------------------
+
 """Submission format checks owned by converters."""
 
 from __future__ import annotations
@@ -55,25 +68,37 @@ class SubmissionIssue:
         )
 
 
-def prepare_submission(target_benchmark: str, case: CannBenchCase, source_dir: Path) -> None:
+def prepare_submission(
+    target_benchmark: str, case: CannBenchCase, source_dir: Path
+) -> None:
     if _normalize_name(target_benchmark) == "stanford":
         issues = _prepare_stanford_submission(case, Path(source_dir))
         if issues:
-            raise ValueError(_format_submission_issues("Stanford", target_benchmark, source_dir, issues))
+            raise ValueError(
+                _format_submission_issues(
+                    "Stanford", target_benchmark, source_dir, issues
+                )
+            )
 
 
 def is_submission_dir(target_benchmark: str, source_dir: Path) -> bool:
     return not collect_submission_issues(target_benchmark, source_dir)
 
 
-def validate_submission(target_benchmark: str, case: CannBenchCase, source_dir: Path, *, label: str) -> None:
+def validate_submission(
+    target_benchmark: str, case: CannBenchCase, source_dir: Path, *, label: str
+) -> None:
     issues = collect_submission_issues(target_benchmark, source_dir)
     if issues:
-        raise ValueError(_format_submission_issues(label, target_benchmark, source_dir, issues))
+        raise ValueError(
+            _format_submission_issues(label, target_benchmark, source_dir, issues)
+        )
     prepare_submission(target_benchmark, case, source_dir)
 
 
-def collect_submission_issues(target_benchmark: str, source_dir: Path) -> list[SubmissionIssue]:
+def collect_submission_issues(
+    target_benchmark: str, source_dir: Path
+) -> list[SubmissionIssue]:
     """Return all format issues that can be determined without executing a submission."""
 
     path = Path(source_dir)
@@ -145,7 +170,9 @@ def _stanford_source_issues(path: Path) -> list[SubmissionIssue]:
     ]
 
 
-def _prepare_stanford_submission(case: CannBenchCase, source_dir: Path) -> list[SubmissionIssue]:
+def _prepare_stanford_submission(
+    case: CannBenchCase, source_dir: Path
+) -> list[SubmissionIssue]:
     ai_op_path = source_dir / "ai_op.py"
     if not ai_op_path.is_file():
         return _stanford_source_issues(source_dir)
@@ -189,7 +216,10 @@ def _stanford_python_source_issues(path: Path) -> list[SubmissionIssue]:
     return issues
 
 
-def _stanford_model_contract_issues(case: CannBenchCase, source_dir: Path) -> list[SubmissionIssue]:
+def _stanford_model_contract_issues(
+    case: CannBenchCase, source_dir: Path
+) -> list[SubmissionIssue]:
+    ai_op_path = source_dir / "ai_op.py"
     task_path = case.files.get("task")
     if task_path is None or not Path(task_path).is_file():
         return []
@@ -209,20 +239,24 @@ def _stanford_model_contract_issues(case: CannBenchCase, source_dir: Path) -> li
         ]
     try:
         ai_module = _load_module_from_path(
-            "stanford_ai_contract", source_dir / "ai_op.py", prepend_paths=[source_dir]
+            "stanford_ai_contract", ai_op_path, prepend_paths=[source_dir]
         )
     except Exception as exc:
         return [
             SubmissionIssue(
                 "AUTO-STANFORD-005",
                 "Stanford ai_op.py cannot be imported",
-                source_dir / "ai_op.py",
+                ai_op_path,
                 "an importable module using files contained in source_dir",
                 f"{type(exc).__name__}: {exc}",
                 "include required local modules and remove import-time failures",
             )
         ]
 
+    return _loaded_stanford_contract_issues(task_module, ai_module, ai_op_path)
+
+
+def _loaded_stanford_contract_issues(task_module, ai_module, ai_op_path):
     task_model = getattr(task_module, "Model", None)
     ai_model = getattr(ai_module, "ModelNew", None)
     if task_model is None or ai_model is None:
@@ -230,7 +264,7 @@ def _stanford_model_contract_issues(case: CannBenchCase, source_dir: Path) -> li
             SubmissionIssue(
                 "AUTO-STANFORD-006",
                 "Stanford model classes are incomplete",
-                source_dir / "ai_op.py",
+                ai_op_path,
                 "task.Model and ai_op.ModelNew",
                 f"task.Model={task_model is not None}, ai_op.ModelNew={ai_model is not None}",
                 "define ModelNew in ai_op.py with the same public contract as task.Model",
@@ -238,13 +272,19 @@ def _stanford_model_contract_issues(case: CannBenchCase, source_dir: Path) -> li
         ]
 
     issues = []
-    issues.extend(_method_signature_issues(task_model, ai_model, "__init__", source_dir / "ai_op.py"))
-    issues.extend(_method_signature_issues(task_model, ai_model, "forward", source_dir / "ai_op.py"))
-    issues.extend(_state_dict_contract_issues(task_module, task_model, ai_model, source_dir / "ai_op.py"))
+    issues.extend(
+        _method_signature_issues(task_model, ai_model, "__init__", ai_op_path)
+    )
+    issues.extend(_method_signature_issues(task_model, ai_model, "forward", ai_op_path))
+    issues.extend(
+        _state_dict_contract_issues(task_module, task_model, ai_model, ai_op_path)
+    )
     return issues
 
 
-def _load_module_from_path(name: str, path: Path, *, prepend_paths: Iterable[Path] = ()):
+def _load_module_from_path(
+    name: str, path: Path, *, prepend_paths: Iterable[Path] = ()
+):
     old_path = list(sys.path)
     for entry in reversed([str(Path(item)) for item in prepend_paths]):
         if entry not in sys.path:
@@ -378,7 +418,24 @@ def _render_stanford_ai_op(source: str) -> str:
         "del _Path, _sys, _op_dir\n"
         "\n"
     )
-    return prelude + source
+    tree = ast.parse(source)
+    insertion_line = 0
+    for index, node in enumerate(tree.body):
+        is_docstring = (
+            index == 0
+            and isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+        )
+        is_future = isinstance(node, ast.ImportFrom) and node.module == "__future__"
+        if not is_docstring and not is_future:
+            break
+        insertion_line = node.end_lineno
+    lines = source.splitlines(keepends=True)
+    prefix = "".join(lines[:insertion_line])
+    if prefix and not prefix.endswith("\n"):
+        prefix += "\n"
+    return prefix + prelude + "".join(lines[insertion_line:])
 
 
 def _ensure_stanford_ai_op_prelude(path: Path) -> None:
