@@ -78,13 +78,15 @@ echo "=============================================="
 
 PYTHONPATH="${SRC_DIR}:${PYTHONPATH}" python3 -c "
 import sys, json, os
-sys.path.insert(0, '${SRC_DIR}')
+sys.path.insert(0, sys.argv[1])
+json_file = sys.argv[2]
+template_file = sys.argv[3]
 
 from kernel_eval.report.html_generator import render_html_report
 from kernel_eval.report.report_generator import EvalReport, OperatorReport
 
 # 读取 JSON
-with open('${JSON_FILE}') as f:
+with open(json_file) as f:
     data = json.load(f)
 
 # 构造 OperatorReport 列表
@@ -120,18 +122,18 @@ report = EvalReport(
 )
 
 # 生成 HTML
-html = render_html_report(report, report.setup_info, '${TEMPLATE_FILE}')
+html = render_html_report(report, report.setup_info, template_file)
 
 # 输出到原 JSON 同目录
-out_name = os.path.splitext(os.path.basename('${JSON_FILE}'))[0] + '.html'
-out_dir = os.path.dirname(os.path.abspath('${JSON_FILE}'))
+out_name = os.path.splitext(os.path.basename(json_file))[0] + '.html'
+out_dir = os.path.dirname(os.path.abspath(json_file))
 out_path = os.path.join(out_dir, out_name)
 
 with open(out_path, 'w', encoding='utf-8') as f:
     f.write(html)
 
 print(f'[INFO] 评测报告已保存到: {out_path}')
-"
+" "$SRC_DIR" "$JSON_FILE" "$TEMPLATE_FILE"
 
 echo ""
 echo "报告生成完成"
