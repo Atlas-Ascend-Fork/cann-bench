@@ -1,4 +1,18 @@
+#!/usr/bin/python3
+# coding=utf-8
+
+# ----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software; you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ----------------------------------------------------------------------------------------------------------
+
 """level1 reference implementations on NPU."""
+
 import math
 import torch
 
@@ -22,10 +36,13 @@ def _get_compiled_exp(x, log_base, scale, shift):
     key = (x.dtype, tuple(x.shape), float(log_base), float(scale), float(shift))
     if key not in _EXP_TORCHAIR_CACHE:
         import torchair
+
         backend = torchair.get_npu_backend()
+
         # Bind constants into a closure so the compiled graph treats them as scalars
         def _fn(x):
             return _exp_composite(x, log_base, scale, shift)
+
         _EXP_TORCHAIR_CACHE[key] = torch.compile(_fn, backend=backend, dynamic=False)
     return _EXP_TORCHAIR_CACHE[key]
 
@@ -49,7 +66,9 @@ def exp_ref(inputs, attrs):
 
 
 def gelu_ref(inputs, attrs):
-    return torch.nn.functional.gelu(inputs[0], approximate=attrs.get("approximate", "none"))
+    return torch.nn.functional.gelu(
+        inputs[0], approximate=attrs.get("approximate", "none")
+    )
 
 
 def sigmoid_ref(inputs, attrs):
@@ -75,10 +94,8 @@ def swi_glu_ref(inputs, attrs):
     `dim` attr 时回落 -1 行为不变；将来若加 dim case 会被静默忽略。
     """
     import torch_npu
+
     x = inputs[0]
-    if x.shape[-1] % 2:
-        usable = (x.shape[-1] // 2) * 2
-        x = x[..., :usable].contiguous()
     return torch_npu.npu_swiglu(x, dim=attrs.get("dim", -1))
 
 
@@ -88,9 +105,11 @@ def foreach_norm_ref(inputs, attrs):
 
 
 def foreach_addcdiv_scalar_ref(inputs, attrs):
-    return list(torch._foreach_addcdiv(
-        inputs[0], inputs[1], inputs[2], value=float(attrs.get("scalar", 1.0))
-    ))
+    return list(
+        torch._foreach_addcdiv(
+            inputs[0], inputs[1], inputs[2], value=float(attrs.get("scalar", 1.0))
+        )
+    )
 
 
 REGISTRY = {
