@@ -54,7 +54,7 @@ If SOC cannot be auto-detected, the script will exit with an error. Use `--soc=`
 > **CMake 版本兼容性说明**：要求 CMake >= 3.16。CMake 3.31 起默认向链接器传递
 > `--dependency-file` 参数（`CMAKE_LINK_DEPENDS_USE_LINKER=ON`），而毕昇链接器
 > （cce-ld）不支持该参数，链接 `_C.so` 会报
-> `ignoring unkown argurment: --dependency-file=...` 导致构建失败。
+> `ignoring unknown argument: --dependency-file=...` 导致构建失败。
 > 本工程 `CMakeLists.txt` 已在所有 `add_library()` 之前设置
 > `CMAKE_LINK_DEPENDS_USE_LINKER=FALSE` 规避（对 CMake < 3.31 无副作用），
 > 无需额外操作；若基于本工程新建 CMake 工程，请保留该设置。

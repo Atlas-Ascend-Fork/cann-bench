@@ -99,7 +99,7 @@ which bisheng
 source /usr/local/Ascend/ascend-toolkit/set_env.sh
 ```
 
-### 链接失败：cce-ld 报 "ignoring unkown argurment: --dependency-file=..."
+### 链接失败：cce-ld 报 "ignoring unknown argument: --dependency-file=..."
 
 **原因**：CMake 3.31 起默认向链接器传递 `--dependency-file` 参数
 （`CMAKE_LINK_DEPENDS_USE_LINKER=ON`），而毕昇（bisheng）工具链的链接器
