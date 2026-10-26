@@ -165,64 +165,67 @@ MARE = max(abs(actual - golden) / (abs(golden) + 1e-7))
 ## 5. 标准 Golden 代码
 
 ```python
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+# ----------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ----------------------------------------------------------------------------
+
 import torch
 import torch.nn.functional as F
-
-"""
-NLLLoss 算子 Torch Golden 参考实现
-
-计算负对数似然损失
-
-公式:
-    l_n = -w_{y_n} * x_{n, y_n}
-    当 reduction='mean': out = sum(l_n) / sum(w_{y_n})
-    当 reduction='sum':  out = sum(l_n)
-    当 reduction='none': out = {l_1, ..., l_N}
-
-参考 PyTorch API: torch.nn.functional.nll_loss
-    https://pytorch.org/docs/stable/generated/torch.nn.functional.nll_loss.html
-
-Parameters:
-    - input: (N, C) 或 (N, C, d1, ...) - log-probabilities 张量
-    - target: (N,) 或 (N, d1, ...) - 类别索引
-    - weight: (C,) - 各类别权重
-    - ignore_index: int, 默认 -100 - 忽略的类别索引
-    - reduction: 'none' | 'mean' | 'sum', 默认 'mean' - 损失聚合方式
-"""
 
 
 def nll_loss(
     input: torch.Tensor,
     target: torch.Tensor,
     weight: torch.Tensor,
-    reduction: str = 'mean',
+    reduction: str = "mean",
     ignore_index: int = -100,
-) -> torch.Tensor:
-    """
-    计算负对数似然损失
+):
+    """NLLLoss 的 PyTorch 参考实现。
+
+    使用 torch.nn.functional.nll_loss 计算损失（支持 1D/2D/高维输入），
+    并额外返回 total_weight 以与 NPU 输出结构对齐。
 
     Args:
-        input: 输入 log-probabilities 张量，shape (N, C) 或 (N, C, d1, d2, ...)
-               C 为类别数（channel_first 约定）
-        target: 目标类别索引，shape (N,) 或 (N, d1, d2, ...)
-        weight: 类别权重，shape (C,)
-        reduction: 损失聚合方式
-                   'none': 返回每个样本的损失
-                   'mean': 返回加权平均损失
-                   'sum': 返回加权总损失
-        ignore_index: 忽略的类别索引
+        input: log-probabilities 张量
+        target: 类别索引张量
+        weight: 类别权重张量，shape (C,)
+        reduction: "none" | "mean" | "sum"
+        ignore_index: 忽略的目标值
 
     Returns:
-        损失值：如果 reduction='none'，返回 shape 同 target 的张量
-               否则返回标量张量
+        (out, total_weight) 元组
     """
-    return F.nll_loss(
-        input=input,
-        target=target,
+    # PyTorch NLLLoss requires int64 indices; the operator also accepts int32.
+    target = target.to(torch.long)
+    out = F.nll_loss(
+        input,
+        target,
         weight=weight,
         reduction=reduction,
         ignore_index=ignore_index,
     )
+
+    # total_weight: 有效 target 对应 weight 之和
+    # reduction='none' 时无意义，但为了输出结构与 NPU 一致，返回标量 0
+    if reduction == "none":
+        total_weight = torch.zeros((), dtype=input.dtype, device=input.device)
+    else:
+        valid_mask = target != ignore_index
+        if valid_mask.any():
+            valid_targets = target[valid_mask].flatten()
+            total_weight = weight.index_select(0, valid_targets).sum().to(input.dtype)
+        else:
+            total_weight = torch.zeros((), dtype=input.dtype, device=input.device)
+
+    return out, total_weight
 ```
 
 ## 6. NPU 调用方式

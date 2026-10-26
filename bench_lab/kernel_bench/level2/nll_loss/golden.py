@@ -14,8 +14,13 @@ import torch
 import torch.nn.functional as F
 
 
-def nll_loss(input: torch.Tensor, target: torch.Tensor, weight: torch.Tensor,
-             reduction: str = "mean", ignore_index: int = -100):
+def nll_loss(
+    input: torch.Tensor,
+    target: torch.Tensor,
+    weight: torch.Tensor,
+    reduction: str = "mean",
+    ignore_index: int = -100,
+):
     """NLLLoss 的 PyTorch 参考实现。
 
     使用 torch.nn.functional.nll_loss 计算损失（支持 1D/2D/高维输入），
@@ -31,6 +36,8 @@ def nll_loss(input: torch.Tensor, target: torch.Tensor, weight: torch.Tensor,
     Returns:
         (out, total_weight) 元组
     """
+    # PyTorch NLLLoss requires int64 indices; the operator also accepts int32.
+    target = target.to(torch.long)
     out = F.nll_loss(
         input,
         target,
