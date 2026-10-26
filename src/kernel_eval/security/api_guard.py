@@ -44,9 +44,10 @@ _INIT_DONE: bool = False
 
 # 快照存储
 _API_SNAPSHOT: Dict[str, Tuple[Any, str, Any]] = {}
+_SNAPSHOT_TAKEN: bool = False
 
-# 模块级状态读写互斥锁——snapshot / verify / restore 都会改写
-# _API_SNAPSHOT，多线程评测路径下需要互斥防止读到半截的状态。
+# 模块级状态读写互斥锁——snapshot / verify / restore 都会访问
+# 快照状态，多线程评测路径下需要互斥防止读到半截的状态。
 _API_SNAPSHOT_LOCK = threading.Lock()
 
 # snapshot 时固定下来的 ALLOW_TIMING_TAMPERING 状态，避免 TOCTOU——
@@ -100,7 +101,7 @@ def snapshot_timing_apis() -> None:
     - 固化 ALLOW_TIMING_TAMPERING 环境变量值（防 TOCTOU）
     - 注册 atexit 钩子以确保异常退出时 API 也会被恢复（防止 torch_npu atexit 用到被篡改的 API）
     """
-    global _API_SNAPSHOT, _SNAPSHOT_ALLOW_TAMPERING, _ATEXIT_REGISTERED
+    global _API_SNAPSHOT, _SNAPSHOT_TAKEN, _SNAPSHOT_ALLOW_TAMPERING, _ATEXIT_REGISTERED
 
     _init_critical_apis()
 
@@ -109,6 +110,7 @@ def snapshot_timing_apis() -> None:
         _SNAPSHOT_ALLOW_TAMPERING = (os.environ.get("ALLOW_TIMING_TAMPERING") == "1")
 
         _API_SNAPSHOT = {}
+        _SNAPSHOT_TAKEN = False
         for name, parent, attr in _CRITICAL_API_ENTRIES:
             try:
                 original = getattr(parent, attr)
@@ -116,6 +118,8 @@ def snapshot_timing_apis() -> None:
             except AttributeError:
                 # API不存在时跳过
                 pass
+
+        _SNAPSHOT_TAKEN = True
 
         # 注册一次 atexit，确保任何退出路径（包括 SystemExit / 未捕获异常）
         # 都会还原 timing API；torch_npu 自己的 atexit 钩子才能用回真身。
@@ -137,7 +141,8 @@ def verify_timing_apis() -> List[str]:
     Returns:
         被篡改的API名称列表（空列表表示通过）。
         若 torch_npu 在初始化时不可用 → snapshot 是空 dict，无任何可校验对象，
-        直接判定为不可信，返回 ["__torch_npu_unavailable__"] sentinel。
+        直接判定为不可信，返回 ["__torch_npu_unavailable__"] sentinel；若尚未调用
+        snapshot，则返回 ["__snapshot_not_taken__"] sentinel。
     """
     # F091: torch_npu 不可用时不能 silent-pass —— 没有 snapshot 对象就什么都校验不了，
     # 评测结果不可信。强制返回非空列表让调用方触发现有的篡改处理路径。
@@ -148,6 +153,8 @@ def verify_timing_apis() -> List[str]:
     changed = []
 
     with _API_SNAPSHOT_LOCK:
+        if not _SNAPSHOT_TAKEN:
+            return ["__snapshot_not_taken__"]
         snapshot_items = list(_API_SNAPSHOT.items())
 
     for name, (parent, attr, original) in snapshot_items:
@@ -221,7 +228,7 @@ class APIGuard:
             True表示通过，False表示被篡改
 
         Raises:
-            RuntimeError: 如果检测到篡改且未设置ALLOW_TIMING_TAMPERING
+            RuntimeError: 如果快照未建立或检测到篡改且未设置ALLOW_TIMING_TAMPERING
         """
         # 读 snapshot 时固化的 allow_tampering 值——非每次 verify 重新读 env
         if _SNAPSHOT_ALLOW_TAMPERING is True:
@@ -229,6 +236,12 @@ class APIGuard:
 
         changed = verify_timing_apis()
         if changed:
+            if changed == ["__snapshot_not_taken__"]:
+                raise RuntimeError(
+                    "[SECURITY] Timing API快照未建立，无法验证完整性。\n"
+                    "评测结果不可信，已终止执行。\n"
+                    "请在校验前调用 snapshot() 建立基线。"
+                )
             raise RuntimeError(
                 f"[SECURITY] Timing API被篡改: {changed}\n"
                 "评测结果不可信，已终止执行。\n"
