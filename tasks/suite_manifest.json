@@ -20,8 +20,8 @@
   "performance_status": "pending_npu_revalidation",
   "missing_baseline_policy": {
     "formula": "3 * t_hw_us",
-    "meaning": "One third of theoretical performance expressed as duration; estimated, not measured.",
-    "scope": "Missing, non-positive, or degenerate (equal to t_hw_us) baselines in existing supported platform records only; preserve other existing positive baselines and all t_hw_us.",
+    "meaning": "One third of theoretical performance expressed as duration, rounded to three decimal places using ROUND_HALF_UP; estimated, not measured.",
+    "scope": "Missing, non-positive, or degenerate (equal to t_hw_us) baselines in existing supported platform records only. Cap all baselines at 3 * t_hw_us, then round to at most three decimal places using ROUND_HALF_UP; preserve all t_hw_us.",
     "provenance": "Each metadata file lists imputed_baseline_cases under _metadata. Unsupported or absent platform records are not synthesized."
   },
   "public_adjustments": [
@@ -507,9 +507,9 @@
       "level": "L3",
       "path": "tasks/level3/transpose",
       "files_sha256": {
-        "desc.md": "f4cc09863f3a2bc00ba291a80dcd7128ff51d0478d8073085e26597e7eff2c7b",
-        "proto.yaml": "9b68ff9495226d15e6e1211abe1ac7ceeafa8c829b771aa312b5ef27ffa7c6b0",
-        "golden.py": "7b1b14852f3bb6d4b632d36e3d1643e4d21712c0c00cac0149262cb424743754",
+        "desc.md": "a8f6fb9c974457e55c7c8ba1cad8edd4e5d2834a50376ffcae804d87ba63e8fa",
+        "proto.yaml": "7c7644b5ce7b8a1e10dcead6d96112d1c7b6571df872404ce5c96d633f2d6da9",
+        "golden.py": "07ca8aabbc161aec0586d72eec6d4b7956a6a5a16efc4f86be1b2b14a6e221d0",
         "cases.yaml": "3d8dae1a8ec1ac46033acc44ffa01437dbcd0223b4f825aa014b97f5717fcc84",
         "cases.csv": "662aa35038d7257d33c450beb596fa9c96156f621f5254cc4be23f100a4319fb"
       }

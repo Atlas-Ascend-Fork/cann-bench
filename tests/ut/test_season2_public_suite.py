@@ -1,6 +1,7 @@
 """Release invariants for the public Season2 tree, without NPU execution."""
 import ast
 from collections import Counter
+from decimal import Decimal, ROUND_HALF_UP
 import hashlib
 import json
 from pathlib import Path
@@ -155,7 +156,9 @@ def test_missing_baselines_are_explicit_theory_estimates(platform, count):
         level,op,cid=key.split('/')
         entry=data[level][op][cid]
         assert entry['t_hw_us'] > 0
-        assert entry['baseline_perf_us'] == 3 * entry['t_hw_us']
+        expected = (3 * Decimal(str(entry['t_hw_us']))).quantize(
+            Decimal('0.001'), rounding=ROUND_HALF_UP)
+        assert Decimal(str(entry['baseline_perf_us'])) == expected
         assert store.get_perf(f'{level}/{op}',int(cid)) == entry['baseline_perf_us']
         assert store.has_baseline(f'{level}/{op}',int(cid))
     for op in MANIFEST['unsupported_operators_by_platform'].get(platform,[]):
