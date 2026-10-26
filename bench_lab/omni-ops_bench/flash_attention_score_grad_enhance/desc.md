@@ -13,7 +13,7 @@ FlashAttentionScoreGradEnhance 是 `FlashAttentionScoreEnhance` 的反向算子�
 - 难度等级：L4（FusedComposite）
 - 默认布局为 `input_layout="TND"`，同时保留 `BSND` 布局语义
 - 支持 float16 / bfloat16 输入
-- 输出 `dq`、`dk`、`dv`、`dq_rope`、`dk_rope`
+- 输出 `dq`、`dk`、`dv`
 
 ## 2. 算子定义
 
@@ -37,7 +37,7 @@ $$
 Q'=[Q,Q_{rope}],\quad K'=[K,K_{rope}]
 $$
 
-并额外输出：
+内部 Golden 会计算 rope 分支梯度，但公开接口不返回该分支：
 
 $$
 dQ_{rope},\quad dK_{rope}
@@ -49,7 +49,7 @@ $$
 2. 若传入 `query_rope` 和 `key_rope`，拼接后参与 QK 梯度计算。
 3. 复用正向一致的 `pse`、`atten_mask`、`sparse_mode`、`pre_tokens`、`next_tokens` 语义重建 attention score。
 4. 根据 `dy` 对 softmax attention 反向传播，得到 `dq`、`dk`、`dv`。
-5. 若存在 rope 输入，将拼接维度上的梯度拆分为 `dq_rope` 和 `dk_rope`。
+5. 若存在 rope 输入，内部计算将拼接维度上的梯度拆分为 `dq_rope` 和 `dk_rope`；这两个梯度不在公开返回值中。
 
 ## 3. 接口规范
 
@@ -87,7 +87,7 @@ cann_bench.flash_attention_score_grad_enhance(
     str softmaxInLayout="",
     Tensor|list|None q_start_idx=None,
     Tensor|list|None kv_start_idx=None,
-) -> (Tensor dq, Tensor dk, Tensor dv, Tensor dq_rope, Tensor dk_rope)
+) -> (Tensor dq, Tensor dk, Tensor dv)
 ```
 
 ### 输入参数说明
@@ -132,15 +132,13 @@ cann_bench.flash_attention_score_grad_enhance(
 | dq | float16 / bfloat16 | 与 query 一致 | Query 梯度 |
 | dk | float16 / bfloat16 | 与 key 一致 | Key 梯度 |
 | dv | float16 / bfloat16 | 与 value 一致 | Value 梯度 |
-| dq_rope | float16 / bfloat16 | 与 query_rope 一致或 empty tensor | Query rope 梯度 |
-| dk_rope | float16 / bfloat16 | 与 key_rope 一致或 empty tensor | Key rope 梯度 |
 
 ### 规则与约束
 
 - `softmax_max` 和 `softmax_sum` 应来自同一次 `FlashAttentionScoreEnhance` 正向输出。
 - `softmax_in` 为接口保留参数，标准 Golden 不依赖该输入。
 - 反向使用的 `pse`、`atten_mask`、`sparse_mode`、`pre_tokens`、`next_tokens` 应与正向保持一致。
-- `query_rope` 与 `key_rope` 需要成对传入；否则 rope 梯度返回 empty tensor。
+- `query_rope` 与 `key_rope` 需要成对传入；两者仅参与内部 Golden 的 rope 梯度计算，公开接口仍返回 `dq`、`dk`、`dv` 三个梯度。
 - 当 key/value head 数小于 `head_num` 时，按 GQA/MQA 语义 repeat KV head。
 
 ## 4. 精度要求
@@ -171,7 +169,7 @@ cann_bench.flash_attention_score_grad_enhance(
 
 ## 5. 标准 Golden 代码
 
-标准 Golden 参考实现位于同目录 `golden.py` 的 `flash_attention_score_grad_enhance` 函数，使用 Torch autograd 按正向等价逻辑重建 attention，并返回 Q/K/V 及 rope 梯度。
+标准 Golden 参考实现位于同目录 `golden.py` 的 `flash_attention_score_grad_enhance` 函数，使用 Torch autograd 按正向等价逻辑重建 attention；内部 `attention_grad` 会计算 Q/K/V 及 rope 梯度，但公开 wrapper 只返回 Q/K/V 三个梯度。
 
 ## 6. 额外信息
 
@@ -189,7 +187,7 @@ dy = torch.randn(t, n, d, dtype=torch.bfloat16, device="npu")
 query_rope = torch.randn(t, n, dr, dtype=torch.bfloat16, device="npu")
 key_rope = torch.randn(t, n, dr, dtype=torch.bfloat16, device="npu")
 
-dq, dk, dv, dq_rope, dk_rope = cann_bench.flash_attention_score_grad_enhance(
+dq, dk, dv = cann_bench.flash_attention_score_grad_enhance(
     query,
     key,
     value,
