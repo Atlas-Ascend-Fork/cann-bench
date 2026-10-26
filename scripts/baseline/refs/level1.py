@@ -25,10 +25,9 @@ _EXP_TORCHAIR_CACHE = {}
 
 
 def _exp_composite(x, log_base, scale, shift):
-    """Inner callable that torchair compiles. log_base==0 ⇒ natural e."""
+    """Inner callable that torchair compiles with the logarithmic multiplier."""
     t = scale * x + shift
-    if log_base != 0.0:
-        t = t * log_base
+    t = t * log_base
     return torch.exp(t)
 
 
@@ -60,7 +59,7 @@ def exp_ref(inputs, attrs):
     base = float(attrs.get("base", -1.0))
     scale = float(attrs.get("scale", 1.0))
     shift = float(attrs.get("shift", 0.0))
-    log_base = math.log(base) if base > 0 else 0.0
+    log_base = math.log(base) if base > 0 else 1.0
     compiled = _get_compiled_exp(x, log_base, scale, shift)
     return compiled(x)
 
