@@ -581,7 +581,7 @@
       "files_sha256": {
         "desc.md": "eb1713bf74007b7575d72461ac48d912614cc622296da1587d9511501759b062",
         "proto.yaml": "0dcb5c45267ac85bd65dcbd0e3fa7e52e079638095c6ca12dd0f90e376ae46b8",
-        "golden.py": "7a846f549a23cb6f49ede315ea13332792e5c3f4b3987e723471a364255f5e39",
+        "golden.py": "29e9f171137d683e7baed71232e56024f0da28f438b6ce0769a1ec5eb1d5e0b9",
         "cases.yaml": "d61f8f55bd50bc48129be00d61267b1a550d9c8f09b55b03c6bf4911c82f8b63",
         "cases.csv": "25c6cb9daef9e21768bb80eee85b01f741f02392a055ed51fc11be58189cd643"
       }

@@ -395,10 +395,20 @@ def attention_grad(query, key, value, dy, **kwargs):
         return _attention_grad_impl(query, key, value, dy, **kwargs)
 
 
+# 同精度参考钩子的进程内开关（见 flash_attention_score_grad_enhance_bench）。
+# golden 入口会 del 掉未知 kwargs，无法经参数线传递；op_runner 对单 case 串行
+# 调用 golden/bench，模块级标志足够且由 try/finally 保证复位。
+_BENCH_PRECISION = False
+
+
 def _attention_grad_impl(query, key, value, dy, **kwargs):
     native = query.device.type == "npu" and query.dtype in (torch.float16, torch.bfloat16)
     calc_device = query.device if native else torch.device("cpu")
-    calc_dtype = query.dtype if native else torch.float32
+    # 真值路径按引擎 fp64_cpu 策略的本意以 float64 计算（issue #311：此前强制
+    # float32，golden 自身的相消舍入即超标，case 的小值域兜底分母恒 0）；
+    # bench 同精度参考钩子保持 float32 计算口径，作为"正确实现应有的误差下限"。
+    calc_dtype = query.dtype if native else (
+        torch.float32 if _BENCH_PRECISION else torch.float64)
     query_f = query.detach().to(calc_device).to(calc_dtype).requires_grad_(True)
     key_f = key.detach().to(calc_device).to(calc_dtype).requires_grad_(True)
     value_f = value.detach().to(calc_device).to(calc_dtype).requires_grad_(True)
@@ -576,6 +586,22 @@ def flash_attention_score_grad_enhance(
     )
     # ST only asserts dq/dk/dv; the current Python wrapper exposes those three.
     return grads[:3]
+
+
+def flash_attention_score_grad_enhance_bench(*args, **kwargs):
+    """同精度参考钩子（evaluator 的 b，见 cann_loader.get_bench_function）。
+
+    与 golden 同一实现、同一签名，但强制 float32 累加精度计算——即修复前
+    golden 的口径——作为"正确同精度实现应有的误差下限"，使小值域/相消/正常
+    值域兜底的参考错误计数不再恒为 0（issue #311）。非对某颗硬件的复刻；
+    更高内部精度的实现会 meet-or-exceed 此下限、照常通过。
+    """
+    global _BENCH_PRECISION
+    _BENCH_PRECISION = True
+    try:
+        return flash_attention_score_grad_enhance(*args, **kwargs)
+    finally:
+        _BENCH_PRECISION = False
 
 
 def get_input(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, dy: torch.Tensor, pse=None, atten_mask=None, query_rope=None, key_rope=None, **kwargs):

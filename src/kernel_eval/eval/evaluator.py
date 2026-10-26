@@ -1299,6 +1299,26 @@ class Evaluator:
             output_names = (
                 [out.name for out in op_info.outputs] if op_info and op_info.outputs else []
             )
+
+            # 同精度参考 (b)：与主流程同构——优先 <op>_bench，否则回退 golden。
+            # issue #311：此前复验硬传 native_output=None，compare 的小值域/相消
+            # 兜底分母恒 0，依赖兜底营救的 case 会"首验过、复验必挂"。
+            golden_strategy = getattr(self.bench_config, 'golden_precision', 'fp64_cpu')
+            if golden_strategy in ('native_cpu', 'native_npu'):
+                native_out2 = golden_outs2
+            else:
+                bench_func = self._bench_reference_func(case.rel_path, golden_func)
+                native_inputs2 = tensors_to_cpu(fresh_inputs)
+                if self.golden_loader.get_input_function(case.rel_path) is not None:
+                    native_params2 = params
+                else:
+                    native_params2 = self.param_builder.build_call_params(
+                        bench_func, case, native_inputs2)
+                native_result2 = self.op_runner.run(bench_func, native_params2, case_id_str,
+                                                    native_inputs2, to_device=False,
+                                                    enable_profiler=False)
+                native_out2 = native_result2.outputs if native_result2.success else None
+
             get_output_func = self.golden_loader.get_output_function(case.rel_path)
             if get_output_func is not None:
                 retry_attrs = getattr(case, 'attrs', None) or {}
@@ -1306,13 +1326,16 @@ class Evaluator:
                     get_output_func, golden_outs2, op_info, retry_attrs)
                 ai_outs2 = self._apply_get_output(
                     get_output_func, ai_outs2, op_info, retry_attrs)
+                if native_out2 is not None:
+                    native_out2 = self._apply_get_output(
+                        get_output_func, native_out2, op_info, retry_attrs)
 
             return self.accuracy_evaluator.evaluate(
                 ai_output=ai_outs2,
                 golden_output=golden_outs2,
                 dtype=dtype,
                 custom_thresholds=merged_thresholds,
-                native_output=None,
+                native_output=native_out2,
                 ignore_output_indices=ignore_output_indices,
                 expected_output_dtypes=output_dtype_contracts,
                 output_names=output_names,
