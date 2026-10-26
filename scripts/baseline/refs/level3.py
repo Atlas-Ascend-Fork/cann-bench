@@ -1,3 +1,16 @@
+#!/usr/bin/python3
+# coding=utf-8
+
+# ----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software; you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# ----------------------------------------------------------------------------------------------------------
+
 """level3 reference implementations on NPU.
 
 Some level3 operators have no torch_npu fused API and either rely on a
@@ -5,6 +18,7 @@ torch composite or are deemed not directly comparable (output a special
 NPU representation, e.g. NZ format). Those are omitted from REGISTRY so
 the harness skips method 3 cleanly.
 """
+
 import torch
 
 
@@ -21,9 +35,12 @@ def add_rms_norm_dynamic_quant_ref(inputs, attrs):
     output_mask=[True, True] enables both the dequant scale and residual outputs.
     """
     import torch_npu
+
     if hasattr(torch_npu, "npu_add_rms_norm_dynamic_quant"):
         return torch_npu.npu_add_rms_norm_dynamic_quant(
-            inputs[0], inputs[1], inputs[2],
+            inputs[0],
+            inputs[1],
+            inputs[2],
             epsilon=attrs.get("epsilon", 1e-6),
             output_mask=[True, True],
         )
@@ -31,10 +48,21 @@ def add_rms_norm_dynamic_quant_ref(inputs, attrs):
 
 
 def conv_2d_ref(inputs, attrs):
+    x = inputs[0]
+    pads = attrs.get("pads", [0, 0, 0, 0])
+    if len(pads) == 2:
+        padding = tuple(pads)
+    elif pads[0] == pads[1] and pads[2] == pads[3]:
+        padding = (pads[0], pads[2])
+    else:
+        x = torch.nn.functional.pad(x, (pads[2], pads[3], pads[0], pads[1]))
+        padding = 0
     return torch.nn.functional.conv2d(
-        inputs[0], inputs[1], inputs[2] if len(inputs) > 2 else None,
+        x,
+        inputs[1],
+        inputs[2] if len(inputs) > 2 else None,
         stride=tuple(attrs.get("strides", [1, 1])),
-        padding=tuple(attrs.get("pads", [0, 0])[:2]),
+        padding=padding,
         dilation=tuple(attrs.get("dilations", [1, 1])),
     )
 
@@ -48,7 +76,9 @@ def depthwise_conv_2d_ref(inputs, attrs):
     if w.dim() == 3:
         w = w.unsqueeze(1)
     return torch.nn.functional.conv2d(
-        x, w, bias,
+        x,
+        w,
+        bias,
         stride=tuple(attrs.get("stride", [1, 1])),
         padding=tuple(attrs.get("padding", [0, 0])[:2]),
         dilation=tuple(attrs.get("dilation", [1, 1])),
@@ -70,12 +100,13 @@ def dequant_swiglu_quant_ref(inputs, attrs):
     quant_mode is always pinned to 1 (dynamic per-token).
     """
     import torch_npu
+
     if not hasattr(torch_npu, "npu_dequant_swiglu_quant"):
         return None
     x = inputs[0]
     kwargs = {
         "activate_left": bool(attrs.get("activate_left", False)),
-        "quant_mode": 1,   # always dynamic per-token in this benchmark
+        "quant_mode": 1,  # always dynamic per-token in this benchmark
     }
     # Position 1/2 are weight_scale & activation_scale only when x is int32.
     if x.dtype == torch.int32 and len(inputs) >= 3:
@@ -88,6 +119,7 @@ def dequant_swiglu_quant_ref(inputs, attrs):
         kwargs["quant_scale"] = inputs[1]
     return torch_npu.npu_dequant_swiglu_quant(x, **kwargs)
 
+
 # Cached torchair-compiled callables for transpose_weight=True cases.
 # Keyed by (dtype, x.shape, w.shape, has_bias) so each shape gets its own
 # compiled .om once and is reused across the harness's 20 trial calls.
@@ -99,9 +131,11 @@ def _gmm_eager_with_transpose(x, w_nk, bias_or_none, group_list):
     GE applies GroupedMatmulTransFusionPass during graph compile, fusing
     Transpose + GroupedMatmul into a single GroupedMatmul kernel."""
     import torch_npu
+
     w_kn = w_nk.transpose(-2, -1).contiguous()
     out = torch_npu.npu_grouped_matmul(
-        [x], [w_kn],
+        [x],
+        [w_kn],
         bias=[bias_or_none] if bias_or_none is not None else None,
         group_list=group_list,
         split_item=2,
@@ -113,9 +147,11 @@ def _gmm_eager_with_transpose(x, w_nk, bias_or_none, group_list):
 def _get_compiled_gmm(x, w_nk, has_bias):
     """Return a torchair-compiled callable for this (dtype, x.shape, w.shape, has_bias)."""
     import torch
+
     key = (x.dtype, tuple(x.shape), tuple(w_nk.shape), has_bias)
     if key not in _GMM_TORCHAIR_CACHE:
         import torchair
+
         backend = torchair.get_npu_backend()
         _GMM_TORCHAIR_CACHE[key] = torch.compile(
             _gmm_eager_with_transpose, backend=backend, dynamic=False
@@ -144,6 +180,7 @@ def grouped_matmul_ref(inputs, attrs):
     """
     import torch
     import torch_npu
+
     if not hasattr(torch_npu, "npu_grouped_matmul"):
         return None
 
@@ -155,7 +192,9 @@ def grouped_matmul_ref(inputs, attrs):
     #   bf16 x → bias must be fp32  (NOT bf16)
     #   fp32 x → bias must be fp32
     if bias is not None:
-        required_bias_dtype = torch.float16 if x.dtype == torch.float16 else torch.float32
+        required_bias_dtype = (
+            torch.float16 if x.dtype == torch.float16 else torch.float32
+        )
         if bias.dtype != required_bias_dtype:
             bias = bias.to(required_bias_dtype)
 
@@ -173,7 +212,8 @@ def grouped_matmul_ref(inputs, attrs):
 
     # Eager path: aclnn directly. Already a single GroupedMatmul kernel.
     return torch_npu.npu_grouped_matmul(
-        [x], [w],
+        [x],
+        [w],
         bias=[bias] if bias is not None else None,
         group_list=group_list,
         split_item=2,
@@ -199,6 +239,7 @@ def moe_finalize_routing_ref(inputs, attrs):
     so we remap input positions and pull drop_pad_mode from attrs.
     """
     import torch_npu
+
     if not hasattr(torch_npu, "npu_moe_finalize_routing"):
         return None
     perm = inputs[0]
@@ -210,13 +251,21 @@ def moe_finalize_routing_ref(inputs, attrs):
     expert = inputs[6] if len(inputs) > 6 else None
     drop_pad_mode = int(attrs.get("drop_pad_mode", 0))
     return torch_npu.npu_moe_finalize_routing(
-        perm, skip1, skip2, bias, scales, src_to_dst, expert, drop_pad_mode,
+        perm,
+        skip1,
+        skip2,
+        bias,
+        scales,
+        src_to_dst,
+        expert,
+        drop_pad_mode,
     )
 
 
 def moe_gating_top_k_softmax_ref(inputs, attrs):
     """torch_npu.npu_moe_gating_top_k_softmax(x, finished, k)."""
     import torch_npu
+
     x = inputs[0]
     finished = inputs[1] if len(inputs) > 1 else None
     k = int(attrs.get("k", 1))
@@ -237,13 +286,15 @@ def moe_re_routing_ref(inputs, attrs):
     Only first 2 inputs are positional; 3rd (`per_token_scales`) is keyword-only.
     """
     import torch_npu
+
     if not hasattr(torch_npu, "npu_moe_re_routing"):
         return None
     tokens = inputs[0]
     expert_token_num_per_rank = inputs[1]
     per_token_scales = inputs[2] if len(inputs) > 2 else None
     return torch_npu.npu_moe_re_routing(
-        tokens, expert_token_num_per_rank,
+        tokens,
+        expert_token_num_per_rank,
         per_token_scales=per_token_scales,
         expert_token_num_type=int(attrs.get("expert_token_num_type", 1)),
         idx_type=int(attrs.get("idx_type", 0)),
@@ -252,12 +303,16 @@ def moe_re_routing_ref(inputs, attrs):
 
 def nms_ref(inputs, attrs):
     import torchvision
-    return torchvision.ops.nms(inputs[0], inputs[1], float(attrs.get("iou_threshold", 0.5)))
+
+    return torchvision.ops.nms(
+        inputs[0], inputs[1], float(attrs.get("iou_threshold", 0.5))
+    )
 
 
 def quant_matmul_ref(inputs, attrs):
     """torch_npu.npu_quant_matmul(x1, x2, scale, pertoken_scale=None, bias=None, output_dtype=...)."""
     import torch_npu
+
     if hasattr(torch_npu, "npu_quant_matmul"):
         x1, x2, scale = inputs[0], inputs[1], inputs[2]
         pertoken = inputs[3] if len(inputs) > 3 else None
@@ -265,8 +320,9 @@ def quant_matmul_ref(inputs, attrs):
         kwargs = {}
         if "output_dtype" in attrs:
             kwargs["output_dtype"] = getattr(torch, attrs["output_dtype"], None)
-        return torch_npu.npu_quant_matmul(x1, x2, scale,
-                                          pertoken_scale=pertoken, bias=bias, **kwargs)
+        return torch_npu.npu_quant_matmul(
+            x1, x2, scale, pertoken_scale=pertoken, bias=bias, **kwargs
+        )
     return None
 
 
@@ -276,10 +332,12 @@ def roi_align_ref(inputs, attrs):
     schema as a bool but the NPU binding takes int `roi_end_mode`; mapping
     follows torch_npu/contrib/module/roi_align.py: True→3, False→0."""
     import torch_npu
+
     features, rois = inputs[0], inputs[1]
     roi_end_mode = 3 if bool(attrs.get("aligned", False)) else 0
     return torch_npu.npu_roi_align(
-        features, rois,
+        features,
+        rois,
         float(attrs.get("spatial_scale", 1.0)),
         int(attrs.get("outputHeight", attrs.get("pooled_height", 7))),
         int(attrs.get("outputWidth", attrs.get("pooled_width", 7))),
@@ -289,9 +347,12 @@ def roi_align_ref(inputs, attrs):
 
 
 def top_k_ref(inputs, attrs):
-    return torch.topk(inputs[0], int(attrs.get("k", 1)),
-                      dim=int(attrs.get("dim", -1)),
-                      largest=bool(attrs.get("largest", True)))
+    return torch.topk(
+        inputs[0],
+        int(attrs.get("k", 1)),
+        dim=int(attrs.get("dim", -1)),
+        largest=bool(attrs.get("largest", True)),
+    )
 
 
 def transpose_ref(inputs, attrs):
@@ -301,7 +362,9 @@ def transpose_ref(inputs, attrs):
 
 
 def unique_ref(inputs, attrs):
-    res = torch.unique(inputs[0], return_inverse=bool(attrs.get("return_inverse", False)))
+    res = torch.unique(
+        inputs[0], return_inverse=bool(attrs.get("return_inverse", False))
+    )
     return res
 
 
@@ -313,11 +376,14 @@ def weight_quant_batch_matmul_ref(inputs, attrs):
     cases.csv inputs order: [x, weight, antiquant_scale, antiquant_offset?, bias?]
     """
     import torch_npu
+
     x, w, antiscale = inputs[0], inputs[1], inputs[2]
     antioffset = inputs[3] if len(inputs) > 3 else None
     bias = inputs[4] if len(inputs) > 4 else None
     return torch_npu.npu_weight_quant_batchmatmul(
-        x, w, antiscale,
+        x,
+        w,
+        antiscale,
         antiquant_offset=antioffset,
         quant_scale=None,
         quant_offset=None,
@@ -336,6 +402,7 @@ def conv_3d_backprop_filter_ref(inputs, attrs):
     """
     import torch
     import torch_npu
+
     if not hasattr(torch_npu, "npu_conv3d_backward"):
         return None
     x, grad = inputs[0], inputs[1]
@@ -350,9 +417,13 @@ def conv_3d_backprop_filter_ref(inputs, attrs):
     groups = int(attrs.get("groups", 1))
     weight = torch.empty(filter_size, dtype=x.dtype, device=x.device)
     grad_in, grad_w, grad_b = torch_npu.npu_conv3d_backward(
-        x, grad, weight,
-        stride=strides, padding=padding,
-        dilation=dilations, groups=groups,
+        x,
+        grad,
+        weight,
+        stride=strides,
+        padding=padding,
+        dilation=dilations,
+        groups=groups,
         output_mask=[False, True, False],
     )
     return grad_w
@@ -366,12 +437,17 @@ def strided_slice_ref(inputs, attrs):
     """
     import importlib.util
     from pathlib import Path
+
     x = inputs[0]
     _golden = None
     if _golden is None:
         spec = importlib.util.spec_from_file_location(
             "_golden_ss",
-            Path(__file__).resolve().parents[3] / "tasks" / "level3" / "strided_slice" / "golden.py",
+            Path(__file__).resolve().parents[3]
+            / "tasks"
+            / "level3"
+            / "strided_slice"
+            / "golden.py",
         )
         _mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(_mod)

@@ -19,8 +19,15 @@ Conv2D算子Torch Golden参考实现
 计算2D卷积
 公式: y = CONV(x, filter) + bias
 """
+
+
 def conv_2d(
-    x: torch.Tensor, filter: torch.Tensor, bias: torch.Tensor, strides: list, pads: list, dilations: list = [1, 1]
+    x: torch.Tensor,
+    filter: torch.Tensor,
+    bias: torch.Tensor,
+    strides: list,
+    pads: list,
+    dilations: list = [1, 1],
 ) -> torch.Tensor:
     """
     计算2D卷积
@@ -40,16 +47,19 @@ def conv_2d(
     """
 
     # pads 格式: [pad_top, pad_bottom, pad_left, pad_right]
-    # PyTorch conv2d padding 格式: (left, right, top, bottom) 或 (pad_h, pad_w) 对称模式
+    # PyTorch conv2d只接受(pad_h, pad_w)，非对称填充需先使用pad。
     # 检查是否对称填充
     if pads[0] == pads[1] and pads[2] == pads[3]:
         # 对称模式: (pad_height, pad_width)
         padding = (pads[0], pads[2])
     else:
         # 非对称模式: (left, right, top, bottom)
-        padding = (pads[2], pads[3], pads[0], pads[1])
+        x = torch.nn.functional.pad(x, (pads[2], pads[3], pads[0], pads[1]))
+        padding = 0
     stride = (strides[0], strides[1])
     dilation = (dilations[0], dilations[1])
 
-    y = torch.nn.functional.conv2d(x, filter, bias, stride=stride, padding=padding, dilation=dilation)
+    y = torch.nn.functional.conv2d(
+        x, filter, bias, stride=stride, padding=padding, dilation=dilation
+    )
     return y
