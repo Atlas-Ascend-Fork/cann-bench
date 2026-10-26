@@ -43,7 +43,7 @@ cann_bench.unique(Tensor x, bool return_inverse) -> (Tensor y, Tensor inverse)
 | 参数 | Shape | dtype | 描述 |
 |------|-------|-------|------|
 | y | 由唯一值数量决定 | 与输入 x 相同 | 输出张量，唯一值 |
-| inverse | 与输入 x 展平后相同 | int64 | 逆索引，满足 x = y[inverse]（仅当 return_inverse=True 时返回） |
+| inverse | 与输入 x 相同 | int64 | 逆索引，满足 x = y[inverse]（仅当 return_inverse=True 时返回） |
 
 **返回行为**（对标 PyTorch `torch.unique`）：
 - `return_inverse=True`：返回 `(y, inverse)` 元组
@@ -80,8 +80,8 @@ cann_bench.unique(Tensor x, bool return_inverse) -> (Tensor y, Tensor inverse)
 | `return_inverse` | {true, false} | cases.csv 双向覆盖 |
 
 约束（§3 规则与约束之外的结构性不变量，避免与上文重复）：
-- shape 关系：输出 `y` 始终为 1D（无论 `x.rank`），长度 `len(y) <= numel(x)`；`return_inverse=True` 时 `inverse.shape == (numel(x),)`，与 `x.flatten()` 等长。
-- 重建不变量：`return_inverse=True` 时严格有 `x.flatten() == y[inverse]`（逐元素相等）。
+- shape 关系：输出 `y` 始终为 1D（无论 `x.rank`），长度 `len(y) <= numel(x)`；`return_inverse=True` 时 `inverse.shape == x.shape`，每个输入位置对应一个唯一值索引。
+- 重建不变量：`return_inverse=True` 时严格有 `x == y[inverse]`（shape 与逐元素值均相同）；展平表示为 `x.flatten() == y[inverse.flatten()]`。
 - 索引值域：`inverse` 元素 ∈ [0, len(y) - 1]，每个 `[0, len(y))` 中的 ID 至少出现一次（满射）。
 
 ## 4. 精度要求
