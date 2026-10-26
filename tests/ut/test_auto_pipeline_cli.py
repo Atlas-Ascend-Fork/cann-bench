@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 from pathlib import Path
 
@@ -353,3 +354,47 @@ def test_format_display_timestamp_uses_local_timezone(monkeypatch):
             monkeypatch.setenv("TZ", old_tz)
         if hasattr(cli.time, "tzset"):
             cli.time.tzset()
+
+
+def _seed_registered_run(root: Path, payload: dict) -> Path:
+    path = root / ".auto_pipeline" / "runs" / str(payload["run_id"]) / "run.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+def _kill_args(run_id: str) -> argparse.Namespace:
+    return argparse.Namespace(run_id=run_id, output=None, latest=False, grace_sec=0.0)
+
+
+def test_kill_keeps_terminal_run_status_when_process_already_gone(monkeypatch, tmp_path):
+    """进程已退出（sent only not-found）时 kill 不能把 success 改写成 killed。"""
+    monkeypatch.setattr(cli.pipeline_state, "DEFAULT_CANN_BENCH_ROOT", tmp_path)
+    monkeypatch.setattr(cli.pipeline_state, "_pid_identity_status", lambda _pid, _start: "not-found")
+    monkeypatch.setattr(cli.pipeline_state, "_env_snapshots", lambda _matchers: {})
+    path = _seed_registered_run(tmp_path, {
+        "run_id": "finished-run",
+        "status": "success",
+        "pid": 999999,
+        "pgid": 999999,
+        "pid_start_time": 12345,
+    })
+
+    assert cli._main_kill(_kill_args("finished-run")) == 0
+
+    assert json.loads(path.read_text(encoding="utf-8"))["status"] == "success"
+
+
+def test_refused_kill_does_not_mark_run_as_killed(monkeypatch, tmp_path):
+    """kill_run 拒绝执行（pid 身份不明 → ok=False）时 registry 状态不得被改写。"""
+    monkeypatch.setattr(cli.pipeline_state, "DEFAULT_CANN_BENCH_ROOT", tmp_path)
+    monkeypatch.setattr(cli.pipeline_state, "_env_snapshots", lambda _matchers: {})
+    path = _seed_registered_run(tmp_path, {
+        "run_id": "unsafe-run",
+        "status": "success",
+        "pid": 999998,
+    })
+
+    assert cli._main_kill(_kill_args("unsafe-run")) == 1
+
+    assert json.loads(path.read_text(encoding="utf-8"))["status"] == "success"

@@ -341,10 +341,14 @@ def _main_kill(args: argparse.Namespace) -> int:
             target="run",
         ),
     )
-    pipeline_state.mark_run_killed(run_id, signum=signal_number(), target="run")
-    for task in run.get("tasks") or []:
-        if isinstance(task, dict) and str(task.get("status")) == "running":
-            pipeline_state.mark_task_killed(run_id, str(task.get("task_id") or task.get("name")), signum=signal_number(), target="run")
+    # 只有这次 kill 被接受（ok=True）且 run 尚未终结时才落 killed：
+    # kill_run 拒绝执行（pid 身份不明/目标缺失 → ok=False）或进程早已退出时，
+    # 不能改写 registry 里已完成 run 的 success/failed 终态。
+    if result.get("ok") and not _run_is_terminal(run):
+        pipeline_state.mark_run_killed(run_id, signum=signal_number(), target="run")
+        for task in run.get("tasks") or []:
+            if isinstance(task, dict) and str(task.get("status")) == "running":
+                pipeline_state.mark_task_killed(run_id, str(task.get("task_id") or task.get("name")), signum=signal_number(), target="run")
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 0 if result.get("ok") else 1
 
