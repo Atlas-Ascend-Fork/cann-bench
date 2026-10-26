@@ -83,7 +83,7 @@ json_file = sys.argv[2]
 template_file = sys.argv[3]
 
 from kernel_eval.report.html_generator import render_html_report
-from kernel_eval.report.report_generator import EvalReport, OperatorReport
+from kernel_eval.report.report_generator import EvalReport, EvalResult, OperatorReport
 
 # 读取 JSON
 with open(json_file) as f:
@@ -101,6 +101,7 @@ for op_data in data.get('operators', []):
         pass_rate=op_data.get('pass_rate', 0.0),
         avg_speedup=op_data.get('avg_speedup', 0.0),
         score=op_data.get('score', 0.0),
+        cases=[EvalResult(**case_data) for case_data in op_data.get('cases', [])],
     )
     operators.append(op)
 

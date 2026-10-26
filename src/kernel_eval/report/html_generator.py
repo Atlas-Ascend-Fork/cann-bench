@@ -33,11 +33,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, List, Optional
-from dataclasses import asdict
 from html import escape as _escape
 import re
 
 from .report_generator import EvalReport, OperatorReport
+from .summary_generator import calculate_geometric_mean
 
 
 # ---------------------------------------------------------------------------
@@ -240,8 +240,10 @@ def _render_bars(report: EvalReport) -> str:
         g['cases'] += op.total_cases
         g['passed'] += op.passed_cases
         g['score'] += op.score
-        if op.avg_speedup > 0:
-            g['speeds'].append(op.avg_speedup)
+        g['speeds'].extend(
+            case.speedup for case in op.cases
+            if case.status == 'success' and case.speedup > 0
+        )
 
     names = {lv: f'Level {lv}' for lv in lv_groups}
     lv_max = {lv: g['ops'] * 100 for lv, g in lv_groups.items()}
@@ -253,7 +255,18 @@ def _render_bars(report: EvalReport) -> str:
 
     bar_s = ''.join(_bar(names[lv], lv_groups[lv]['score'] / lv_max[lv] * 100, _fs(lv_groups[lv]['score'])) for lv in sorted(lv_groups))
     bar_p = ''.join(_bar(names[lv], lv_groups[lv]['passed'] / lv_groups[lv]['cases'] * 100, _fr(lv_groups[lv]['passed'] / lv_groups[lv]['cases'])) for lv in sorted(lv_groups))
-    bar_sp = ''.join(_bar(names[lv], (sum(lv_groups[lv]['speeds']) / len(lv_groups[lv]['speeds']) * 100) if lv_groups[lv]['speeds'] else 0, _fsp(sum(lv_groups[lv]['speeds']) / len(lv_groups[lv]['speeds'])) if lv_groups[lv]['speeds'] else '—', True) for lv in sorted(lv_groups))
+    bar_sp_rows = []
+    for lv in sorted(lv_groups):
+        speedup = calculate_geometric_mean(lv_groups[lv]['speeds'])
+        bar_sp_rows.append(
+            _bar(
+                names[lv],
+                speedup * 100,
+                _fsp(speedup) if speedup > 0 else '—',
+                True,
+            )
+        )
+    bar_sp = ''.join(bar_sp_rows)
 
     return f'''    <div class="bar-chart">
 {bar_s}    </div>
