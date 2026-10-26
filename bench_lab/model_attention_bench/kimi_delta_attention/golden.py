@@ -132,8 +132,9 @@ def kimi_delta_attention_oracle(
         output[:, token] = np.squeeze(memory_vk @ (query[:, token] * scale)[..., None], axis=-1)
 
     y = torch.from_numpy(output.copy()).to(device=q.device, dtype=q.dtype)
+    state_dtype = torch.float64 if q.dtype == torch.float64 else torch.float32
     final_state = torch.from_numpy(np.swapaxes(memory_vk, -1, -2).copy()).to(
-        device=q.device, dtype=q.dtype
+        device=q.device, dtype=state_dtype
     )
     return y, final_state
 

@@ -398,6 +398,33 @@ def test_csa_mutations_are_detected(mutation):
     assert np.max(np.abs(mutant - expected)) > 1e-2
 
 
+@pytest.mark.parametrize(
+    ("input_dtype", "expected_state_dtype"),
+    (
+        (torch.float16, torch.float32),
+        (torch.bfloat16, torch.float32),
+        (torch.float32, torch.float32),
+        (torch.float64, torch.float64),
+    ),
+)
+def test_kda_oracle_final_state_dtype_matches_contract(input_dtype, expected_state_dtype):
+    aux_dtype = torch.float64 if input_dtype == torch.float64 else torch.float32
+    q = torch.ones((1, 1, 1, 2), dtype=input_dtype)
+    k = torch.ones_like(q)
+    v = torch.full((1, 1, 1, 3), 0.25, dtype=input_dtype)
+    g = torch.zeros_like(q, dtype=aux_dtype)
+    beta = torch.ones((1, 1, 1), dtype=aux_dtype)
+    initial_state = torch.zeros((1, 1, 2, 3), dtype=aux_dtype)
+
+    y, state = GOLDENS.get_oracle_function(NAMES[0])(
+        q, k, v, g, beta, initial_state, False, 1.0
+    )
+
+    assert y.dtype == input_dtype
+    assert state.dtype == expected_state_dtype
+    assert state.shape == (1, 1, 2, 3)
+
+
 def test_oracles_preserve_sub_fp32_information():
     # Dtype checks alone do not detect an FP32 compute followed by FP64 cast.
     q = torch.full((1, 1, 1, 1), 1.0, dtype=torch.float64)
