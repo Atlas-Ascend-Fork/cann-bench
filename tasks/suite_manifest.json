@@ -54,7 +54,7 @@
         "desc.md": "9f7ba8bb4cd7600ecc0c0279a1947340afc76efe37adf8cde26285cfb831b840",
         "proto.yaml": "36be240b07746e5222165afdcd8a072bc89173e7d3e8f8e7253259eca98763c4",
         "golden.py": "3417cc27927f4e64f07b800ea06e857e03eedd08e442f3840598296658a8d8a3",
-        "cases.yaml": "f52c72d1c46606917dbd03bff4e7899548c93b37464a5a818ba9512aef64a0aa",
+        "cases.yaml": "7858173c15326c4a24c2e42cab7965184ea4b00d022aeb083dbcefb6a72583d8",
         "cases.csv": "189964f4a2a050f86c016a5a326ae859d678dec42d9f592c374ecc1128a0f04f"
       }
     },
@@ -75,7 +75,7 @@
       "level": "L2",
       "path": "tasks/level2/arg_max",
       "files_sha256": {
-        "desc.md": "e8a40877c5bc354a3d65015d1697409d55af752cbed758e2d9fd8f96e6127db3",
+        "desc.md": "5eac9e7eea1fe0b3967550786147e773a03a4f56357f16b24670c793147ea867",
         "proto.yaml": "fdabd96afdffd859eeaf7aa53af90da9dd8f19ca804d9aeea69d3bc1f974388d",
         "golden.py": "9401e83bc907acea64c1093e18de307ee415b04e3b4dfac4622c6586e506b00c",
         "cases.yaml": "bfba2f3d3ac0e056c205f7430f238307fbf5ccf3e5b014252aa43795945037cf",
@@ -267,9 +267,9 @@
       "level": "L3",
       "path": "tasks/level3/conv_2d",
       "files_sha256": {
-        "desc.md": "4ec920a357b10b63ebc83fc35ca8682f97520112e172a9b2ade43a5ac9cbc701",
+        "desc.md": "8cdaac90f2ae92702177a99994398d1cf7fa0e1e25cadc4761802164e2171fb4",
         "proto.yaml": "014b97bc4ebb6d0ba3f8178f5fe177318139d4efe9f99d97c149fe996f2daf91",
-        "golden.py": "56aa95935236ac54188cf3276b9866286afe9d44d31b5fbb3e4be46dd08f6266",
+        "golden.py": "1ec5d64d19d21fe79568dee347e15cbfe64b35d4617da19183169b9288d232c2",
         "cases.yaml": "d6d3e13153b303b006acd2508a7ae1bf58a2b61c7e0fbd299ebbbe7409ae5985",
         "cases.csv": "4b67f418307bffdbe96ae9e6adb9c86d198673f45ae83e7a4ceb1734ac3b65e8"
       }
@@ -519,7 +519,7 @@
       "level": "L3",
       "path": "tasks/level3/unique",
       "files_sha256": {
-        "desc.md": "ab81d4c5d89d9afba1d2272f04023971af53ca03f7085a3c1288518955228bf5",
+        "desc.md": "c582b104d44345bd1aacf6dcd94846b2e2c8c0ebab32d2e61f86f45bef9caba6",
         "proto.yaml": "1a0e53939fa221c885691f6830089e678a74be938b14b96293e7f20d2bc51274",
         "golden.py": "1bcb0b9f1f8293687d985bd2175ceb8eeb11ab1d15d00ae8e5e8d0f4808c6633",
         "cases.yaml": "f887e7bb32d08d78757788e6aca5daade3404f97fefdcb1d89a60bb63b08b695",

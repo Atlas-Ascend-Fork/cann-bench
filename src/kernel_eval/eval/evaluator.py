@@ -482,6 +482,10 @@ class Evaluator:
                 [out.name for out in op_info.outputs] if op_info and op_info.outputs else []
             )
             output_dtype_contracts = self._get_output_dtype_contracts(op_info)
+            output_optional_flags = (
+                [bool(getattr(out, 'optional', False)) for out in op_info.outputs]
+                if op_info and op_info.outputs else None
+            )
 
             # 7.5 调用 get_output 后处理（如果存在）
             # 与 get_input 对称：对 golden / AI / native 三路输出统一变换后再对比，
@@ -508,6 +512,7 @@ class Evaluator:
                 ignore_output_indices=ignore_output_indices,
                 diagnostic_context=self._format_output_diagnostic(ai_result),
                 expected_output_dtypes=output_dtype_contracts,
+                output_optional_flags=output_optional_flags,
                 output_names=output_names,
                 output_dtype_source=ai_result.outputs,
             )
@@ -1296,6 +1301,10 @@ class Evaluator:
             ai_outs2 = ai_result2.outputs
             op_info = self.operator_loader.get_operator(case.rel_path)
             output_dtype_contracts = self._get_output_dtype_contracts(op_info)
+            output_optional_flags = (
+                [bool(getattr(out, 'optional', False)) for out in op_info.outputs]
+                if op_info and op_info.outputs else None
+            )
             output_names = (
                 [out.name for out in op_info.outputs] if op_info and op_info.outputs else []
             )
@@ -1338,6 +1347,7 @@ class Evaluator:
                 native_output=native_out2,
                 ignore_output_indices=ignore_output_indices,
                 expected_output_dtypes=output_dtype_contracts,
+                output_optional_flags=output_optional_flags,
                 output_names=output_names,
                 output_dtype_source=ai_result2.outputs,
             )

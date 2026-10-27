@@ -77,6 +77,7 @@ class AccuracyEvaluator:
         expected_output_dtypes: Optional[List[Union[str, List[str]]]] = None,
         output_names: Optional[List[str]] = None,
         output_dtype_source: Any = None,
+        output_optional_flags: Optional[List[bool]] = None,
     ) -> AccuracyResult:
         """
         评测AI算子输出的精度（采用MERE/MARE标准 + 小值域处理）
@@ -93,6 +94,10 @@ class AccuracyEvaluator:
             expected_output_dtypes: proto.yaml 声明的各输出允许 dtype；空声明不限制
             output_names: 与 expected_output_dtypes 对应的输出名，用于错误信息
             output_dtype_source: 原始候选输出。存在 get_output 转换时仍按算子原始输出契约校验
+            output_optional_flags: 与 expected_output_dtypes 对应的 proto ``optional`` 标志。
+                声明为 optional 的输出允许整体缺位（如 Unique 在 return_inverse=false
+                时只返回 y）——缺位时跳过该路 dtype 校验，缺位是否合法交由后续
+                与 golden 的输出数量/逐值比对裁决；输出存在时 dtype 契约照常生效
 
         Returns:
             AccuracyResult: 精度评测结果（统一接口）
@@ -119,6 +124,7 @@ class AccuracyEvaluator:
             dtype_outputs,
             expected_output_dtypes,
             output_names,
+            output_optional_flags,
         )
         if dtype_error:
             return AccuracyResult(
@@ -242,8 +248,14 @@ class AccuracyEvaluator:
         outputs: Any,
         expected_output_dtypes: Optional[List[Union[str, List[str]]]],
         output_names: Optional[List[str]] = None,
+        output_optional_flags: Optional[List[bool]] = None,
     ) -> Optional[str]:
-        """返回第一个违反 proto 输出 dtype 声明的错误；未声明的输出不受限制。"""
+        """返回第一个违反 proto 输出 dtype 声明的错误；未声明的输出不受限制。
+
+        proto 声明 ``optional: true`` 的输出允许整体缺位：缺位时跳过该路校验
+        （缺位合法性由与 golden 的输出数量/逐值比对裁决——golden 产出而候选
+        缺位仍会正确判负）；输出存在时 dtype 契约照常生效。
+        """
         if not expected_output_dtypes:
             return None
 
@@ -259,6 +271,9 @@ class AccuracyEvaluator:
                 else f"output[{index}]"
             )
             if index >= len(actual_outputs):
+                if (output_optional_flags and index < len(output_optional_flags)
+                        and output_optional_flags[index]):
+                    continue
                 actual_dtype = "missing"
             else:
                 actual = actual_outputs[index]

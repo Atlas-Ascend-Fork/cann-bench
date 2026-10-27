@@ -112,6 +112,10 @@ class OutputSpec:
     shape: Optional[List[int]] = None
     description: str = ""
     compare: bool = True
+    # proto 声明 optional: true 的输出允许整体缺位（如 Unique 在
+    # return_inverse=false 时只返回 y）；缺位合法性由与 golden 的输出
+    # 数量/逐值比对裁决，dtype 契约闸对缺位的 optional 输出跳过。
+    optional: bool = False
     # 索引类输出的"指向值"校验声明（如 TopK/ArgSort 的索引输出）。
     # 为 None 时不做索引校验。结构见 eval/index_check.py，例如：
     #   {'input': 'x', 'dim_attr': 'dim', 'value_output': 'y'}
@@ -125,6 +129,7 @@ class OutputSpec:
             'shape': self.shape,
             'description': self.description,
             'compare': self.compare,
+            'optional': self.optional,
             'index_gather': self.index_gather,
             'metadata': self.metadata,
         }
@@ -137,6 +142,7 @@ class OutputSpec:
             shape=data.get('shape'),
             description=data.get('description', ''),
             compare=data.get('compare', True),
+            optional=data.get('optional', False),
             index_gather=data.get('index_gather'),
             metadata=data.get('metadata', {}),
         )

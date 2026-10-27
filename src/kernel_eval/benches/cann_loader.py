@@ -189,6 +189,7 @@ class CannTaskLoader(OperatorDirMixin, TaskLoader):
                 description=output_data.get('description', ''),
                 dtypes=dtype_list,
                 compare=output_data.get('compare', True),
+                optional=bool(output_data.get('optional', False)),
                 index_gather=output_data.get('index_gather'),
             ))
 
