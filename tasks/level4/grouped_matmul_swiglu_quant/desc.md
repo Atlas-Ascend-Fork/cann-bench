@@ -47,7 +47,7 @@ cann_bench.grouped_matmul_swiglu_quant(
     Tensor weight,
     Tensor weight_scale,
     Tensor x_scale,
-    Tensor group_list,
+    int[] group_list,
 ) -> (Tensor y, Tensor y_scale)
 ```
 
@@ -59,7 +59,7 @@ cann_bench.grouped_matmul_swiglu_quant(
 | weight | Tensor (int8) | `[E, K, N]` | 专家权重（GMM 右矩阵）|
 | weight_scale | Tensor (float32) | `[E, N]` | 权重 per-channel 反量化因子 |
 | x_scale | Tensor (float32) | `[M]` | 激活 per-token 反量化因子 |
-| group_list | Tensor (int32) | `[E]` | 每个专家的 token 累计和（cumsum） |
+| group_list | List[int] | 长度 `E` | 每个专家的 token 累计和（cumsum）；属性参数，以 Python 整型列表传入（非 Tensor，不占设备内存） |
 
 ### 输出
 
@@ -72,7 +72,7 @@ cann_bench.grouped_matmul_swiglu_quant(
 
 | 输入 dtype | 输出 dtype |
 |-----------|-----------|
-| x: int8；weight: int8；*_scale: float32；group_list: int32 | y: int8；y_scale: float32 |
+| x: int8；weight: int8；*_scale: float32；group_list: List[int]（属性，非 Tensor） | y: int8；y_scale: float32 |
 
 ### 规则与约束
 
@@ -99,7 +99,7 @@ cann_bench.grouped_matmul_swiglu_quant(
 
 约束：
 
-- `weight.shape[1] == x.shape[1] == K`，`weight.shape[0] == weight_scale.shape[0] == group_list.numel() == E`。
+- `weight.shape[1] == x.shape[1] == K`，`weight.shape[0] == weight_scale.shape[0] == len(group_list) == E`。
 - `N % 2 == 0`（SwiGLU 沿最后一维对半拆分）。
 - `group_list` 严格满足 `0 ≤ group_list[0] ≤ group_list[1] ≤ ... ≤ group_list[E-1] == M`。
 - `x_scale.numel() == M`，与 `x` 的 token 维严格对齐。
@@ -143,12 +143,12 @@ def grouped_matmul_swiglu_quant(
     weight: torch.Tensor,
     weight_scale: torch.Tensor,
     x_scale: torch.Tensor,
-    group_list: torch.Tensor,
+    group_list,  # List[int]（属性参数，cumsum 语义）
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     M, K = x.shape
     E, _, N = weight.shape
     N_out = N // 2
-    ends = group_list.to(torch.int64).tolist()
+    ends = list(group_list)
     starts = [0] + ends[:-1]
 
     dequant = torch.empty((M, N), dtype=torch.float32, device=x.device)
@@ -185,8 +185,8 @@ x = torch.randint(-128, 127, (M, K), dtype=torch.int8, device="npu")
 weight = torch.randint(-128, 127, (E, K, N), dtype=torch.int8, device="npu")
 weight_scale = torch.rand(E, N, dtype=torch.float32, device="npu") * 0.01
 x_scale = torch.rand(M, dtype=torch.float32, device="npu") * 0.01
-# cumsum 语义：四组累计 16/32/48/64
-group_list = torch.tensor([16, 32, 48, 64], dtype=torch.int32, device="npu")
+# cumsum 语义：四组累计 16/32/48/64（属性参数，Python 整型列表）
+group_list = [16, 32, 48, 64]
 
 y, y_scale = cann_bench.grouped_matmul_swiglu_quant(
     x, weight, weight_scale, x_scale, group_list,

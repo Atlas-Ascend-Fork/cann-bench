@@ -615,8 +615,8 @@
       "level": "L4",
       "path": "tasks/level4/grouped_matmul_swiglu_quant",
       "files_sha256": {
-        "desc.md": "6ff71685c4c6dd901bb71c118621b42e95d246607975f3b261c27d0503283115",
-        "proto.yaml": "03cd44586e78cfc96b3457cc6e718fb46768ca7f16791023674652ca72952029",
+        "desc.md": "cc07fc8747c53123c06640a2cd7ba31d3eaaee290f0d073a15bce7511c7da004",
+        "proto.yaml": "f5da598f88baf4bd628a836e5eab9a5d9dfb583eabd58759f1757ff2ec7a69b6",
         "golden.py": "0ec894dcb04fb07b71e9fa6b08ae975c2082553ead8fbefc780c1fffea0996e3",
         "cases.yaml": "84cc013761c172bd62960f8b5c814840dc0c08b6408820bd43284c91266a439c",
         "cases.csv": "b8a3f78f247e98b82302e8f9d932c6cee42415829f9f1b94676a1500bf2b8da2"

@@ -29,8 +29,8 @@ operator:
     float32: 0.001  # y_scale 使用标准精度
   attrs:
   - name: group_list
-    type: Tensor
-    description: 每个专家的 token 累计和（cumsum），shape [E]，int32/int64
+    type: List[int]
+    description: 每个专家的 token 累计和（cumsum），长度为 E；以属性形式按整型列表传入，非 Tensor 输入
     required: true
   inputs:
   - name: x
@@ -64,4 +64,4 @@ operator:
     dtype:
     - float32
     shape: '[M]'
-  schema: grouped_matmul_swiglu_quant(Tensor x, Tensor weight, Tensor weight_scale, Tensor x_scale, Tensor group_list) -> (Tensor y, Tensor y_scale)
+  schema: grouped_matmul_swiglu_quant(Tensor x, Tensor weight, Tensor weight_scale, Tensor x_scale, int[] group_list) -> (Tensor y, Tensor y_scale)
