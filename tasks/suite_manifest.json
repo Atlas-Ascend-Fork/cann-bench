@@ -123,7 +123,7 @@
       "level": "L2",
       "path": "tasks/level2/gather",
       "files_sha256": {
-        "desc.md": "dbb01d29e2c0089f911c245301a872f922c599080fdbf55c3265971bd72c3b73",
+        "desc.md": "3012cc47b8d3761fd6bf86258e9142c7a64c63ca4519d82f4b1c5f2f152f36dd",
         "proto.yaml": "3caccd3f92e5ce257c6883b07cb3c256e7cbed19a48478dc8d4d5a3ee7bbef7b",
         "golden.py": "0da274cd2b668ce9728e3fab5215299a46e0c148028b55526588887b8c6f62fa",
         "cases.yaml": "96ed210059aa0a58bd7590d0e7d128f9c85642249b6792561310b58dc3d10432",

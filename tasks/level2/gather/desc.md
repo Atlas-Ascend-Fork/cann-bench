@@ -21,7 +21,7 @@
 
 ### 数学公式
 
-设输入张量 `x` 维度为 `n`，`dim = k`，则：
+设输入张量 `x` 维度为 `n`，将 `dim` 归一化为非负维度 `k`（`dim >= 0` 时 `k = dim`，否则 `k = dim + n`），则：
 
 $$
 y[i_0, i_1, \ldots, i_{n-1}] = x[i_0, \ldots, i_{k-1},\; index[i_0, i_1, \ldots, i_{n-1}],\; i_{k+1}, \ldots, i_{n-1}]
@@ -45,7 +45,7 @@ cann_bench.gather(Tensor x, Tensor index, int dim=0) -> Tensor y
 |------|------|--------|------|
 | x | Tensor | 必选 | 输入张量（数据源） |
 | index | Tensor | 必选 | 索引张量（整型；与 `x` 维度数相同） |
-| dim | int64 | 0 | gather 维度索引（torch.gather 的 dim 参数） |
+| dim | int64 | 0 | gather 维度索引（支持负数索引，遵循 torch.gather 的 dim 参数语义） |
 
 ### 输出
 
@@ -87,14 +87,14 @@ cann_bench.gather(Tensor x, Tensor index, int dim=0) -> Tensor y
 | `index.shape[i]`（index 各维 size，i ≠ dim） | 1 ~ x.shape[i] | cases.csv 实测 2 ~ 8193；约束 `index.shape[i] ≤ x.shape[i]` |
 | `index.shape[dim]`（index 在 gather 轴 size） | 1 ~ 2^20 | cases.csv 实测 7 ~ 8192，由用户自由决定（即输出 shape） |
 | `index.numel`（index 总元素数 = 输出元素数） | 1 ~ 2^26 | cases.csv 实测 1,000 ~ 67,108,864 |
-| `dim`（gather 维度索引） | 0 ~ x.ndim-1 | cases.csv 实测 0 / 1 / 2 |
+| `dim`（gather 维度索引） | -x.ndim ~ x.ndim-1 | 支持负数索引；负数 `dim` 等价于加上 `x.ndim` 后的非负维度，cases.csv 实测 0 / 1 / 2 |
 | `index` 元素值 | 0 ~ x.shape[dim]-1 | cases.csv 实测 0 ~ 1,000,002；越界为未定义行为 |
 | `x` 元素值（浮点） | 全范围（含 ±inf / NaN） | cases.csv 实测覆盖 `[-0.1, 0.1]` ~ `[-65504, 65504]` 及 ±inf / NaN / 全零 |
 | `x` 元素值（整型） | 各 dtype 完整表示范围 | cases.csv int8 测全范围 `[-128, 127]`；int32 取 `[-1000, 1000]`、int64 取 `[-100000, 100000]`（gather 只搬运数据不参与算术，cases 取小范围便于配套 index 设计；整型完整范围由 dtype 本身保证） |
 
 约束：
-- `x.ndim == index.ndim`，且 `0 ≤ dim < x.ndim`
-- 除 `dim` 维外，`index.shape[i] ≤ x.shape[i]`
+- `x.ndim == index.ndim`，且 `-x.ndim ≤ dim < x.ndim`；负数 `dim` 按 Python/PyTorch 规则从末尾计数（例如 `dim=-1` 表示最后一维）
+- 将负数 `dim` 归一化后，除该维外，`index.shape[i] ≤ x.shape[i]`
 - `index` 元素值必须落在 `[0, x.shape[dim])`，否则结果未定义
 - `index` 仅支持整型（int8 / int32 / int64）；`x` 与输出 dtype 一致
 
@@ -175,4 +175,8 @@ y = cann_bench.gather(x, index, dim=0)   # y.shape == (512, 1024)
 x = torch.randn(128, 128, 64, dtype=torch.float16, device="npu")
 index = torch.randint(0, 128, (128, 64, 64), dtype=torch.int64, device="npu")
 y = cann_bench.gather(x, index, dim=1)   # y.shape == (128, 64, 64)
+
+# 负数 dim：dim=-1 表示沿最后一维 gather，index 元素值须小于该维大小 64
+index = torch.randint(0, 64, (128, 64, 64), dtype=torch.int64, device="npu")
+y = cann_bench.gather(x, index, dim=-1)  # 等价于 dim=2，y.shape == (128, 64, 64)
 ```
