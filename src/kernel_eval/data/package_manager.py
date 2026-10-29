@@ -119,7 +119,7 @@ def _add_vendor_lib_dirs(vendor_path: Path) -> None:
     for lib_dir in lib_dirs:
         if lib_dir.is_dir():
             lib_str = str(lib_dir)
-            if lib_str not in cur:
+            if lib_str not in cur.split(":"):
                 cur = f"{lib_str}:{cur}" if cur else lib_str
                 print(f"[INFO] 已将 {lib_str} 加入 LD_LIBRARY_PATH")
     os.environ["LD_LIBRARY_PATH"] = cur
