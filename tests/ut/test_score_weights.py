@@ -29,6 +29,7 @@ import pytest
 
 from kernel_eval.base.perf_metric import (
     OPERATOR_SCORE_CAP,
+    PER_CASE_SCORE_CAP,
     PERF_METRIC_ENV,
 )
 from kernel_eval.base.score_weights import (
@@ -186,11 +187,11 @@ class TestMajor2Profile:
 
     def test_operator_cap_still_applies(self):
         """2 + HAP 大额奖励分 → 仍被 OPERATOR_SCORE_CAP 封顶。"""
-        case_scores = [(True, 10.0)]  # PER_CASE_SCORE_CAP 顶格的 HAP 奖励
+        case_scores = [(True, PER_CASE_SCORE_CAP)]  # 单用例封顶的 HAP 奖励
         for agg_fn in _agg_fns():
             agg = agg_fn(compile_passed=True, total_cases=1,
                          case_scores=case_scores, weights="2")
-            uncapped = 5.0 + 20.0 + 5.0 + 10.0 * 0.70 * 100.0
+            uncapped = 5.0 + 20.0 + 5.0 + PER_CASE_SCORE_CAP * 0.70 * 100.0
             assert agg["total_score_uncapped"] == pytest.approx(uncapped)
             assert agg["total_score"] == pytest.approx(OPERATOR_SCORE_CAP)
 

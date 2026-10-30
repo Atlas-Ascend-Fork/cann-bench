@@ -405,7 +405,7 @@ $$
 \text{score}_i = \min\left(\frac{T_{\text{HW},i}}{T_{\text{cand},i}},\ \text{PER\_CASE\_SCORE\_CAP}\right), \quad T_{\text{cand},i} < T_{\text{HW},i}
 $$
 
-该分支在 T_cand = T_HW 处与两公式的取值 1 连续衔接、对 T_cand 严格单调、与 baseline 无关；`PER_CASE_SCORE_CAP`（当前 10）兜底 t_hw 标定异常。突破下界的提交仍逐例归因核查（见反作弊与人工复核流程）。
+该分支在 T_cand = T_HW 处与两公式的取值 1 连续衔接、对 T_cand 严格单调、与 baseline 无关；`PER_CASE_SCORE_CAP`（当前 3）兜底 t_hw 标定异常。常规用例单例分上界为 1，聚合时各用例等权求和，故该常数的物理含义是**一条用例最多顶几条常规用例**——取 3 即单条用例对算子性能分的贡献不超过 3 条用例，避免单条锚点失误或单条极端用例支配算子总分。突破下界的提交仍逐例归因核查（见反作弊与人工复核流程）。
 
 **单算子总分封顶**：Eq.4 聚合后 `EachOperatorScore = min(EachOperatorScore, OPERATOR_SCORE_CAP)`（当前 120）——HAP 奖励允许总分越过名义满分 100 以激励真实创新，封顶保证单算子对 Level 分 / 总分的贡献有界；未截断值在结果中以 `total_score_uncapped` 同步输出。两个常数均为维护者可调项。
 

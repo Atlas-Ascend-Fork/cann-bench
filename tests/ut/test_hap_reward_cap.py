@@ -90,6 +90,17 @@ class TestHapRewardBranch:
         assert compute_perf_score(100.0, 1.0, 50.0) == pytest.approx(
             min(50.0, PER_CASE_SCORE_CAP))
 
+    def test_per_case_cap_value_is_three(self):
+        """封顶值是评分口径，改动必须显式过这条断言。
+
+        常规用例（T_cand ≥ T_HW）单例分上界为 1，聚合按用例等权求和，
+        故该常数 = 一条用例最多顶几条常规用例。取 3。
+        """
+        assert PER_CASE_SCORE_CAP == 3.0
+        # 2x 击穿仍在封顶内，线性给奖励；10x 被收到 3。
+        assert hap_reward(5.0, 10.0) == pytest.approx(2.0)
+        assert hap_reward(1.0, 10.0) == pytest.approx(3.0)
+
     def test_callers_get_hap(self, monkeypatch):
         monkeypatch.delenv(PERF_METRIC_ENV, raising=False)
         from kernel_eval.benches.cann_scoring import per_case_sol_score as bench_score
@@ -107,14 +118,15 @@ class TestOperatorScoreCap:
     def test_total_capped_and_uncapped_reported(self, module_path):
         import importlib
         aggregate_eq4 = importlib.import_module(module_path).aggregate_eq4
-        # 20 个 case 全部拿到单用例封顶分：未截断总分 = 20 + 30 + 50*10 = 550
+        # 20 个 case 全部拿到单用例封顶分：未截断总分 = 20 + 30 + 50*3 = 200
         case_scores = [(True, PER_CASE_SCORE_CAP)] * 20
         agg = aggregate_eq4(
             compile_passed=True, total_cases=20, case_scores=case_scores,
             rel_path="level2/synthetic_op",
         )
         assert agg["total_score"] == pytest.approx(OPERATOR_SCORE_CAP)
-        assert agg["total_score_uncapped"] == pytest.approx(550.0)
+        assert agg["total_score_uncapped"] == pytest.approx(
+            20.0 + 30.0 + 50.0 * PER_CASE_SCORE_CAP)
 
     @pytest.mark.parametrize("module_path", [
         "kernel_eval.benches.cann_scoring",
